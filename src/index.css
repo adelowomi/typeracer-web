@@ -549,6 +549,45 @@ a:hover { text-decoration: underline; }
 .target-bar {
   margin-top: 4px;
 }
+.target-bar-head {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: 12px;
+}
+
+.target-report {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.target-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.target-table th, .target-table td {
+  padding: 6px 8px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+.target-table th {
+  color: var(--fg-dim);
+  font-weight: 500;
+  text-transform: uppercase;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+}
+.target-table td.ok { color: var(--accent); }
+.target-table td.miss { color: var(--warn); }
+
+.hint-text {
+  display: block;
+  font-size: 11px;
+  color: var(--fg-dim);
+  margin-top: 2px;
+}
+.small { font-size: 12px; }
 
 .finished-block {
   display: flex;

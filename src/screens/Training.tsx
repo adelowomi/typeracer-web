@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
@@ -6,7 +6,6 @@ import { RaceTextPanel } from "../components/RaceTextPanel";
 import { useTypingEngine } from "../race/useTypingEngine";
 import {
   CODE_LANGUAGES,
-  RACE_MODES,
   TEXT_LENGTHS,
   type CodeLanguage,
   type RaceMode,
@@ -24,7 +23,21 @@ interface FetchedText {
   length: TextLength;
 }
 
+interface TrainingStats {
+  runs: number;
+  bestWpm: number;
+  avgWpm: number;
+  avgAccuracy: number;
+}
+
 const COUNTDOWN_MS = 1500;
+
+const FOCUS_OPTIONS: { mode: RaceMode; label: string; subtitle: string; hint: string }[] = [
+  { mode: "Speed", label: "speed", subtitle: "hit a WPM target", hint: "push your top-end speed" },
+  { mode: "Accuracy", label: "accuracy", subtitle: "stay above an accuracy target", hint: "type clean, not fast" },
+  { mode: "Combined", label: "speed + accuracy", subtitle: "hit both targets at once", hint: "the real-world combo" },
+  { mode: "Completion", label: "just practice", subtitle: "no target, no judgement", hint: "warm-up or freeplay" },
+];
 
 export function Training() {
   const { user, token } = useAuth();
@@ -32,9 +45,10 @@ export function Training() {
   const [source, setSource] = useState<SoloSource>("Quotes");
   const [length, setLength] = useState<TextLength>("Medium");
   const [language, setLanguage] = useState<CodeLanguage>("python");
-  const [mode, setMode] = useState<RaceMode>("Completion");
+  const [mode, setMode] = useState<RaceMode>("Speed");
   const [targetWpm, setTargetWpm] = useState<number | "">(60);
   const [targetAccuracy, setTargetAccuracy] = useState<number | "">(95);
+  const [hydrated, setHydrated] = useState(false);
 
   const [phase, setPhase] = useState<Phase>("setup");
   const [fetched, setFetched] = useState<FetchedText | null>(null);
@@ -45,9 +59,29 @@ export function Training() {
   const [targetMet, setTargetMet] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const [savedRun, setSavedRun] = useState<string | null>(null);
+  const [personalBest, setPersonalBest] = useState<TrainingStats | null>(null);
 
   const wantsTargetWpm = mode === "Speed" || mode === "Combined";
   const wantsTargetAccuracy = mode === "Accuracy" || mode === "Combined";
+  const hasTarget = mode !== "Completion";
+
+  // Pre-fill targets from personal best on first load
+  useEffect(() => {
+    if (!user || !token || hydrated) return;
+    setHydrated(true);
+    api<TrainingStats>("/training/stats", { token })
+      .then((s) => {
+        setPersonalBest(s);
+        if (s.runs > 0) {
+          // Aim a little above personal best for speed; a little above avg for accuracy
+          setTargetWpm(Math.max(30, Math.round(s.bestWpm + 5)));
+          setTargetAccuracy(Math.min(100, Math.max(85, Math.round(s.avgAccuracy * 100))));
+        }
+      })
+      .catch(() => {
+        // ignore — fall back to defaults
+      });
+  }, [user, token, hydrated]);
 
   const handleStart = async () => {
     setBusy(true);
@@ -62,7 +96,6 @@ export function Training() {
       const result = await api<FetchedText>(`/text?${query.toString()}`);
       setFetched(result);
       setPhase("ready");
-      // brief "ready" beat then start
       setTimeout(() => {
         setStartedAt(Date.now());
         setPhase("racing");
@@ -85,7 +118,7 @@ export function Training() {
 
       const targetW = wantsTargetWpm && typeof targetWpm === "number" ? targetWpm : null;
       const targetA = wantsTargetAccuracy && typeof targetAccuracy === "number" ? targetAccuracy / 100 : null;
-      const met = computeTargetMet(mode, targetW, targetA, wpm, accuracy);
+      const met = hasTarget ? computeTargetMet(mode, targetW, targetA, wpm, accuracy) : null;
       setTargetMet(met);
 
       if (user && token && fetched && startedAt) {
@@ -107,6 +140,8 @@ export function Training() {
             }),
           });
           setSavedRun(saved.id);
+          // refresh personal best so subsequent rounds use updated numbers
+          api<TrainingStats>("/training/stats", { token }).then(setPersonalBest).catch(() => {});
         } catch (e) {
           setError(e instanceof Error ? e.message : "Failed to save run");
         }
@@ -120,16 +155,33 @@ export function Training() {
     setStartedAt(null);
   };
 
-  const liveTargetProgress = useMemo(() => {
-    if (phase !== "racing") return null;
+  const liveTarget = useMemo(() => {
+    if (phase !== "racing" || !hasTarget) return null;
     if (mode === "Speed" && typeof targetWpm === "number") {
-      return Math.min(100, (engine.wpm / targetWpm) * 100);
+      return {
+        label: `target: ${targetWpm} wpm`,
+        progress: Math.min(100, (engine.wpm / targetWpm) * 100),
+        current: `${Math.round(engine.wpm)} wpm`,
+      };
     }
     if (mode === "Accuracy" && typeof targetAccuracy === "number") {
-      return Math.min(100, (engine.accuracy / (targetAccuracy / 100)) * 100);
+      return {
+        label: `target: ${targetAccuracy}% accuracy`,
+        progress: Math.min(100, (engine.accuracy * 100 / targetAccuracy) * 100),
+        current: `${Math.round(engine.accuracy * 100)}%`,
+      };
+    }
+    if (mode === "Combined" && typeof targetWpm === "number" && typeof targetAccuracy === "number") {
+      const wpmPct = Math.min(100, (engine.wpm / targetWpm) * 100);
+      const accPct = Math.min(100, (engine.accuracy * 100 / targetAccuracy) * 100);
+      return {
+        label: `target: ${targetWpm} wpm + ${targetAccuracy}%`,
+        progress: Math.min(wpmPct, accPct),
+        current: `${Math.round(engine.wpm)} wpm · ${Math.round(engine.accuracy * 100)}%`,
+      };
     }
     return null;
-  }, [phase, mode, targetWpm, targetAccuracy, engine.wpm, engine.accuracy]);
+  }, [phase, hasTarget, mode, targetWpm, targetAccuracy, engine.wpm, engine.accuracy]);
 
   return (
     <div className="terminal-window training">
@@ -148,21 +200,33 @@ export function Training() {
 
         {phase === "setup" && (
           <>
+            {personalBest && personalBest.runs > 0 && (
+              <p className="muted small">
+                // your best: {Math.round(personalBest.bestWpm)} wpm
+                {" · "}avg accuracy: {Math.round(personalBest.avgAccuracy * 100)}%
+                {" · "}{personalBest.runs} run{personalBest.runs === 1 ? "" : "s"}
+              </p>
+            )}
+
             <section>
-              <h3>// goal</h3>
+              <h3>// what are you training?</h3>
               <div className="source-grid four">
-                {RACE_MODES.map((m) => (
+                {FOCUS_OPTIONS.map((opt) => (
                   <button
-                    key={m.value}
-                    className={`source-card ${mode === m.value ? "selected" : ""}`}
-                    onClick={() => setMode(m.value)}
+                    key={opt.mode}
+                    className={`source-card ${mode === opt.mode ? "selected" : ""}`}
+                    onClick={() => setMode(opt.mode)}
                   >
-                    <strong>{m.label}</strong>
-                    <span className="muted">{m.sub}</span>
+                    <strong>{opt.label}</strong>
+                    <span className="muted">{opt.subtitle}</span>
                   </button>
                 ))}
               </div>
-              {(wantsTargetWpm || wantsTargetAccuracy) && (
+              <p className="muted small">
+                {FOCUS_OPTIONS.find((o) => o.mode === mode)?.hint}
+              </p>
+
+              {hasTarget && (
                 <div className="target-row">
                   {wantsTargetWpm && (
                     <label className="field">
@@ -174,11 +238,14 @@ export function Training() {
                         value={targetWpm}
                         onChange={(e) => setTargetWpm(e.target.value ? Number(e.target.value) : "")}
                       />
+                      {personalBest && personalBest.runs > 0 && (
+                        <span className="hint-text">your best is {Math.round(personalBest.bestWpm)} wpm</span>
+                      )}
                     </label>
                   )}
                   {wantsTargetAccuracy && (
                     <label className="field">
-                      <span className="field-label">target accuracy (%)</span>
+                      <span className="field-label">target accuracy %</span>
                       <input
                         type="number"
                         min={50}
@@ -186,6 +253,9 @@ export function Training() {
                         value={targetAccuracy}
                         onChange={(e) => setTargetAccuracy(e.target.value ? Number(e.target.value) : "")}
                       />
+                      {personalBest && personalBest.runs > 0 && (
+                        <span className="hint-text">you average {Math.round(personalBest.avgAccuracy * 100)}%</span>
+                      )}
                     </label>
                   )}
                 </div>
@@ -243,7 +313,7 @@ export function Training() {
 
             {!user && (
               <p className="muted">
-                <Link to="/login">log in</Link> to save your sessions and track progress.
+                <Link to="/login">log in</Link> to save your sessions, track progress, and auto-tune targets.
               </p>
             )}
           </>
@@ -262,18 +332,27 @@ export function Training() {
               <Stat label="wpm" value={Math.round(phase === "finished" ? finalWpm ?? 0 : engine.wpm).toString()} />
               <Stat label="accuracy" value={`${Math.round((phase === "finished" ? finalAcc ?? 0 : engine.accuracy) * 100)}%`} />
               <Stat label="length" value={fetched.length.toLowerCase()} />
-              <Stat label="goal" value={mode.toLowerCase()} />
+              <Stat label="focus" value={focusLabel(mode)} />
             </div>
             <RaceTextPanel
               text={fetched.text}
               charIndex={engine.charIndex}
               wrong={engine.wrong}
             />
-            {liveTargetProgress !== null && (
+            {liveTarget && (
               <div className="target-bar">
-                <div className="muted" style={{ marginBottom: 4 }}>target progress</div>
+                <div className="target-bar-head">
+                  <span className="muted">{liveTarget.label}</span>
+                  <span className="muted">{liveTarget.current}</span>
+                </div>
                 <div className="racer-bar">
-                  <div className="racer-bar-fill" style={{ width: `${liveTargetProgress}%`, background: liveTargetProgress >= 100 ? "var(--accent)" : "var(--cursor)" }} />
+                  <div
+                    className="racer-bar-fill"
+                    style={{
+                      width: `${liveTarget.progress}%`,
+                      background: liveTarget.progress >= 100 ? "var(--accent)" : "var(--cursor)",
+                    }}
+                  />
                 </div>
               </div>
             )}
@@ -282,12 +361,23 @@ export function Training() {
 
         {phase === "finished" && fetched && finalWpm !== null && finalAcc !== null && (
           <div className="finished-block">
-            {targetMet !== null && (
-              <p className={targetMet ? "target-hit" : "target-miss"}>
-                {targetMet ? "✓ target hit" : "× target not met"}
-              </p>
+            {hasTarget && targetMet !== null && (
+              <TargetReport
+                mode={mode}
+                targetWpm={typeof targetWpm === "number" ? targetWpm : null}
+                targetAccuracy={typeof targetAccuracy === "number" ? targetAccuracy : null}
+                wpm={finalWpm}
+                accuracy={finalAcc}
+                met={targetMet}
+              />
             )}
-            {savedRun && <p className="muted">saved to your training history.</p>}
+
+            {personalBest && personalBest.runs > 0 && finalWpm > personalBest.bestWpm && (
+              <p className="muted small">🏆 new personal best (+{Math.round(finalWpm - personalBest.bestWpm)} wpm)</p>
+            )}
+
+            {savedRun && <p className="muted small">saved to your training history.</p>}
+
             <div className="actions-row">
               <button className="primary" onClick={handleStart} disabled={busy}>
                 another_round()
@@ -302,6 +392,94 @@ export function Training() {
       </div>
     </div>
   );
+}
+
+function TargetReport({
+  mode,
+  targetWpm,
+  targetAccuracy,
+  wpm,
+  accuracy,
+  met,
+}: {
+  mode: RaceMode;
+  targetWpm: number | null;
+  targetAccuracy: number | null;
+  wpm: number;
+  accuracy: number;
+  met: boolean;
+}) {
+  const lines: { label: string; target: string; actual: string; delta: string; ok: boolean }[] = [];
+
+  if ((mode === "Speed" || mode === "Combined") && targetWpm !== null) {
+    const delta = wpm - targetWpm;
+    lines.push({
+      label: "speed",
+      target: `${targetWpm} wpm`,
+      actual: `${Math.round(wpm)} wpm`,
+      delta: `${delta >= 0 ? "+" : ""}${Math.round(delta)} wpm`,
+      ok: wpm >= targetWpm,
+    });
+  }
+  if ((mode === "Accuracy" || mode === "Combined") && targetAccuracy !== null) {
+    const actualPct = accuracy * 100;
+    const delta = actualPct - targetAccuracy;
+    lines.push({
+      label: "accuracy",
+      target: `${targetAccuracy}%`,
+      actual: `${Math.round(actualPct)}%`,
+      delta: `${delta >= 0 ? "+" : ""}${delta.toFixed(1)}pp`,
+      ok: actualPct >= targetAccuracy,
+    });
+  }
+
+  return (
+    <div className="target-report">
+      <p className={met ? "target-hit" : "target-miss"}>
+        {met ? "✓ target hit" : "× target missed"}
+      </p>
+      <table className="target-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>target</th>
+            <th>you</th>
+            <th>delta</th>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.map((line) => (
+            <tr key={line.label}>
+              <td>{line.label}</td>
+              <td>{line.target}</td>
+              <td className={line.ok ? "ok" : "miss"}>{line.actual}</td>
+              <td className={line.ok ? "ok" : "miss"}>{line.delta}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <p className="muted small">{coachLine(mode, lines, met)}</p>
+    </div>
+  );
+}
+
+function coachLine(mode: RaceMode, lines: Array<{ label: string; ok: boolean; delta: string }>, met: boolean): string {
+  if (met) {
+    if (mode === "Speed") return "Nice. Bump the target up 5 wpm and try again.";
+    if (mode === "Accuracy") return "Clean run. Try lowering your accuracy target by 1pp next round to push tempo.";
+    if (mode === "Combined") return "Both targets nailed. Increase one of them next round.";
+  }
+  const missed = lines.find((l) => !l.ok);
+  if (missed?.label === "speed") return "Close on speed — slow down a hair, focus on rhythm, then push.";
+  if (missed?.label === "accuracy") return "Slow down by 5–10% and the errors will fall off.";
+  return "Reset, breathe, go again.";
+}
+
+function focusLabel(mode: RaceMode): string {
+  if (mode === "Speed") return "speed";
+  if (mode === "Accuracy") return "accuracy";
+  if (mode === "Combined") return "both";
+  return "practice";
 }
 
 function Stat({ label, value }: { label: string; value: string }) {
