@@ -8,7 +8,7 @@ const LETTERS = "abcdefghijklmnopqrstuvwxyz".split("");
 export function HangmanPlay() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { room, connectionId, lastRoundEnded, lastMatchEnded, guessLetter, leaveRoom, error, clearMatchEnded } = useHangman();
+  const { room, connectionId, lastRoundEnded, lastMatchEnded, turnSecondsRemaining, guessLetter, leaveRoom, error, clearMatchEnded } = useHangman();
 
   useEffect(() => {
     if (!room) navigate("/hangman", { replace: true });
@@ -65,6 +65,13 @@ export function HangmanPlay() {
         </span>
       </div>
       <div className="terminal-body">
+        {room.currentRound?.activeTurn && (
+          <TurnBanner
+            room={room}
+            connectionId={connectionId}
+            turnSecondsRemaining={turnSecondsRemaining}
+          />
+        )}
         {room.currentRound && (
           <div className="board-grid" style={{ gridTemplateColumns: `repeat(${room.currentRound.boards.length}, 1fr)` }}>
             {room.currentRound.boards.map((board) => {
@@ -166,6 +173,35 @@ export function HangmanPlay() {
         )}
 
         {error && <p className="error"><span className="prompt-prefix">!</span> {error}</p>}
+      </div>
+    </div>
+  );
+}
+
+interface TurnBannerProps {
+  room: NonNullable<ReturnType<typeof useHangman>["room"]>;
+  connectionId: string | null;
+  turnSecondsRemaining: number | null;
+}
+
+function TurnBanner({ room, connectionId, turnSecondsRemaining }: TurnBannerProps) {
+  const turn = room.currentRound?.activeTurn;
+  if (!turn) return null;
+  const team = room.teams.find((t) => t.id === turn.teamId);
+  const player = room.players.find((p) => p.connectionId === turn.playerConnectionId);
+  const yours = turn.playerConnectionId === connectionId;
+  const danger = (turnSecondsRemaining ?? room.turnSeconds) <= 5;
+  return (
+    <div className={`turn-banner ${yours ? "yours" : ""} ${danger ? "danger" : ""}`}>
+      <div className="turn-banner-side">
+        <span className="racer-dot" style={{ background: team?.color ?? "var(--accent)" }} />
+        <span>
+          <strong style={{ color: team?.color ?? "var(--fg)" }}>{team?.name ?? "—"}</strong>
+          <span className="muted small"> · {player?.nickname ?? "—"}{yours ? " (you)" : ""}</span>
+        </span>
+      </div>
+      <div className="turn-timer">
+        {turnSecondsRemaining ?? room.turnSeconds}s
       </div>
     </div>
   );

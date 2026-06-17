@@ -98,11 +98,12 @@ export function HangmanLobby() {
                   </div>
                   <ul className="team-roster">
                     {roster.map((p) => (
-                      <li key={p.connectionId}>
+                      <li key={p.connectionId} className={p.isAbsent ? "absent" : ""}>
                         <span className="racer-dot" style={{ background: p.color }} />
                         <span>{p.nickname}</span>
                         {p.connectionId === room.hostConnectionId && <span className="badge">host</span>}
                         {p.connectionId === connectionId && <span className="badge you">you</span>}
+                        {p.isAbsent && <span className="badge absent-badge">away</span>}
                       </li>
                     ))}
                     {roster.length === 0 && <li className="muted">— empty —</li>}

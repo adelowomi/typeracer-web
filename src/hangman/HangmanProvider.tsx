@@ -30,6 +30,7 @@ interface HangmanState {
   connectionId: string | null;
   lastRoundEnded: RoundEndedDto | null;
   lastMatchEnded: MatchEndedDto | null;
+  turnSecondsRemaining: number | null;
   error: string | null;
 }
 
@@ -51,6 +52,7 @@ const INITIAL: HangmanState = {
   connectionId: null,
   lastRoundEnded: null,
   lastMatchEnded: null,
+  turnSecondsRemaining: null,
   error: null,
 };
 
@@ -61,6 +63,8 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
   const [state, setState] = useState<HangmanState>(INITIAL);
   const connectionRef = useRef<HubConnection | null>(null);
   const tokenRef = useRef<string | null>(null);
+  const lastRoomCodeRef = useRef<string | null>(null);
+  const lastNicknameRef = useRef<string | null>(null);
 
   useEffect(() => { tokenRef.current = token; }, [token]);
 
@@ -71,9 +75,21 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
 
     const connection = new HubConnectionBuilder()
       .withUrl(`${API_BASE_URL}/hub/hangman`, { accessTokenFactory: () => tokenRef.current ?? "" })
-      .withAutomaticReconnect()
+      .withAutomaticReconnect([0, 1000, 2000, 4000, 8000, 15000, 30000, 30000, 30000, 30000])
       .configureLogging(LogLevel.Warning)
       .build();
+
+    // Be generous with mobile backgrounding before declaring the connection dead.
+    connection.serverTimeoutInMilliseconds = 60_000;
+    connection.keepAliveIntervalInMilliseconds = 20_000;
+
+    connection.onreconnected(() => {
+      const code = lastRoomCodeRef.current;
+      if (!code) return;
+      // Re-call JoinRoom; server detects same UserId and restores the existing slot.
+      connection.invoke("JoinRoom", { code, nickname: lastNicknameRef.current })
+        .catch(() => { /* ignore — best effort */ });
+    });
 
     connection.on("RoomState", (room: HangmanRoomDto) => {
       setState((s) => ({ ...s, room }));
@@ -91,7 +107,11 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
     });
 
     connection.on("RoundStarted", () => {
-      setState((s) => ({ ...s, lastRoundEnded: null, lastMatchEnded: null }));
+      setState((s) => ({ ...s, lastRoundEnded: null, lastMatchEnded: null, turnSecondsRemaining: null }));
+    });
+
+    connection.on("TurnTick", (seconds: number) => {
+      setState((s) => ({ ...s, turnSecondsRemaining: seconds }));
     });
 
     connection.on("LetterGuessed", (payload: LetterGuessedDto) => {
@@ -119,13 +139,14 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
         if (!s.room || !s.room.currentRound) return s;
         return {
           ...s,
+          turnSecondsRemaining: null,
           room: { ...s.room, currentRound: { ...s.room.currentRound, activeTurn: turn } },
         };
       });
     });
 
     connection.on("RoundEnded", (payload: RoundEndedDto) => {
-      setState((s) => ({ ...s, lastRoundEnded: payload }));
+      setState((s) => ({ ...s, lastRoundEnded: payload, turnSecondsRemaining: null }));
     });
 
     connection.on("MatchEnded", (payload: MatchEndedDto) => {
@@ -146,6 +167,8 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
     const conn = await ensureConnection();
     try {
       const room = await conn.invoke<HangmanRoomDto>("CreateRoom", request);
+      lastRoomCodeRef.current = room.code;
+      lastNicknameRef.current = null;
       setState((s) => ({ ...s, room, error: null, connectionId: conn.connectionId ?? s.connectionId, lastRoundEnded: null, lastMatchEnded: null }));
       return room;
     } catch (err) {
@@ -159,6 +182,8 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
     const conn = await ensureConnection();
     try {
       const room = await conn.invoke<HangmanRoomDto>("JoinRoom", { code, nickname });
+      lastRoomCodeRef.current = room.code;
+      lastNicknameRef.current = nickname;
       setState((s) => ({ ...s, room, error: null, connectionId: conn.connectionId ?? s.connectionId, lastRoundEnded: null, lastMatchEnded: null }));
       return room;
     } catch (err) {
@@ -201,6 +226,8 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
   const leaveRoom = useCallback(async () => {
     if (!connectionRef.current) return;
     try { await connectionRef.current.invoke("LeaveRoom"); } catch {}
+    lastRoomCodeRef.current = null;
+    lastNicknameRef.current = null;
     setState(() => ({ ...INITIAL, connectionId: connectionRef.current?.connectionId ?? null }));
   }, []);
 

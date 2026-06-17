@@ -19,6 +19,7 @@ export interface HangmanPlayerDto {
   color: string;
   userId: string | null;
   teamId: string | null;
+  isAbsent: boolean;
 }
 
 export interface TeamBoardDto {
