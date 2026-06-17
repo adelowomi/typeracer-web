@@ -48,6 +48,7 @@ export function Training() {
   const [mode, setMode] = useState<RaceMode>("Speed");
   const [targetWpm, setTargetWpm] = useState<number | "">(60);
   const [targetAccuracy, setTargetAccuracy] = useState<number | "">(95);
+  const [noPunctuation, setNoPunctuation] = useState<boolean>(false);
   const [hydrated, setHydrated] = useState(false);
 
   const [phase, setPhase] = useState<Phase>("setup");
@@ -93,6 +94,7 @@ export function Training() {
     try {
       const query = new URLSearchParams({ source, length });
       if (source === "Code") query.set("language", language);
+      else if (noPunctuation) query.set("noPunctuation", "true");
       const result = await api<FetchedText>(`/text?${query.toString()}`);
       setFetched(result);
       setPhase("ready");
@@ -305,6 +307,16 @@ export function Training() {
                   </button>
                 ))}
               </div>
+              {source !== "Code" && (
+                <label className="checkbox-row" style={{ marginTop: 10 }}>
+                  <input
+                    type="checkbox"
+                    checked={noPunctuation}
+                    onChange={(e) => setNoPunctuation(e.target.checked)}
+                  />
+                  <span>strip punctuation (letters, numbers, spaces only)</span>
+                </label>
+              )}
             </section>
 
             <button className="primary" onClick={handleStart} disabled={busy}>

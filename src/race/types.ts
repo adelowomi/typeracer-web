@@ -8,6 +8,7 @@ export interface TextSourceDto {
   kind: TextSourceKind;
   language: string | null;
   length: TextLength;
+  noPunctuation?: boolean;
 }
 
 export interface RacerDto {

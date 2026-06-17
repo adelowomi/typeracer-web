@@ -51,6 +51,7 @@ export function Lobby() {
   const isHost = room.hostConnectionId === connectionId;
   const currentKind = room.textSource.kind;
   const currentLength = room.textSource.length;
+  const currentNoPunct = room.textSource.noPunctuation ?? false;
   const currentMode = room.mode;
 
   const copyInvite = async () => {
@@ -66,13 +67,14 @@ export function Lobby() {
       kind,
       language: kind === "Code" ? language : null,
       length: currentLength,
+      noPunctuation: kind === "Code" ? false : currentNoPunct,
     });
   };
 
   const handleLanguageChange = async (lang: CodeLanguage) => {
     setLanguage(lang);
     if (isHost && currentKind === "Code") {
-      await setTextSource({ kind: "Code", language: lang, length: currentLength });
+      await setTextSource({ kind: "Code", language: lang, length: currentLength, noPunctuation: false });
     }
   };
 
@@ -82,6 +84,18 @@ export function Lobby() {
       kind: currentKind,
       language: currentKind === "Code" ? language : null,
       length,
+      noPunctuation: currentKind === "Code" ? false : currentNoPunct,
+    });
+  };
+
+  const handleNoPunctToggle = async (next: boolean) => {
+    if (!isHost) return;
+    if (currentKind === "Code") return;
+    await setTextSource({
+      kind: currentKind,
+      language: null,
+      length: currentLength,
+      noPunctuation: next,
     });
   };
 
@@ -221,6 +235,18 @@ export function Lobby() {
                 {customText.trim().length} / 1500 (min 50)
               </span>
             </div>
+          )}
+
+          {currentKind !== "Code" && (
+            <label className="checkbox-row">
+              <input
+                type="checkbox"
+                checked={currentNoPunct}
+                disabled={!isHost}
+                onChange={(e) => handleNoPunctToggle(e.target.checked)}
+              />
+              <span>strip punctuation (letters, numbers, spaces only)</span>
+            </label>
           )}
         </section>
 
