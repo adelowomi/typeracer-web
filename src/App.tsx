@@ -10,6 +10,8 @@ import { Register } from "./screens/Register";
 import { MyRooms } from "./screens/MyRooms";
 import { RoomLeaderboard } from "./screens/RoomLeaderboard";
 import { GlobalLeaderboard } from "./screens/GlobalLeaderboard";
+import { Training } from "./screens/Training";
+import { TrainingHistory } from "./screens/TrainingHistory";
 
 export default function App() {
   return (
@@ -22,6 +24,8 @@ export default function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/me/rooms" element={<MyRooms />} />
+              <Route path="/me/training" element={<TrainingHistory />} />
+              <Route path="/train" element={<Training />} />
               <Route path="/leaderboard" element={<GlobalLeaderboard />} />
               <Route path="/room/:code" element={<Lobby />} />
               <Route path="/room/:code/race" element={<Race />} />

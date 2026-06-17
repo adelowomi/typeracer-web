@@ -44,6 +44,7 @@ interface RaceContextValue extends RaceState {
   joinRoom: (code: string, nickname: string | null) => Promise<RoomDto>;
   leaveRoom: () => Promise<void>;
   setTextSource: (source: TextSourceDto) => Promise<void>;
+  setRaceMode: (mode: string) => Promise<void>;
   startRace: (customText?: string) => Promise<void>;
   reportProgress: (charIndex: number, wpm: number, accuracy: number) => void;
   finishRace: (wpm: number, accuracy: number) => Promise<void>;
@@ -239,6 +240,15 @@ export function RaceProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const setRaceMode = useCallback(async (mode: string) => {
+    if (!connectionRef.current) return;
+    try {
+      await connectionRef.current.invoke("SetRaceMode", mode);
+    } catch (err) {
+      setState((s) => ({ ...s, error: errorMessage(err) }));
+    }
+  }, []);
+
   const startRace = useCallback(async (customText?: string) => {
     if (!connectionRef.current) return;
     try {
@@ -279,12 +289,13 @@ export function RaceProvider({ children }: { children: ReactNode }) {
       joinRoom,
       leaveRoom,
       setTextSource,
+      setRaceMode,
       startRace,
       reportProgress,
       finishRace,
       clearError,
     }),
-    [state, createRoom, joinRoom, leaveRoom, setTextSource, startRace, reportProgress, finishRace, clearError],
+    [state, createRoom, joinRoom, leaveRoom, setTextSource, setRaceMode, startRace, reportProgress, finishRace, clearError],
   );
 
   return <RaceContext.Provider value={value}>{children}</RaceContext.Provider>;

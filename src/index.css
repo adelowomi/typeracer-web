@@ -531,6 +531,67 @@ a:hover { text-decoration: underline; }
 }
 .stats-table tbody tr:hover { background: var(--bg); }
 
+/* training + race mode */
+.source-grid.four {
+  grid-template-columns: repeat(4, 1fr);
+}
+@media (max-width: 700px) {
+  .source-grid.four { grid-template-columns: repeat(2, 1fr); }
+}
+
+.target-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 10px;
+}
+.target-row .field { flex: 1; }
+
+.target-bar {
+  margin-top: 4px;
+}
+
+.finished-block {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.target-hit {
+  margin: 0;
+  font-size: 16px;
+  color: var(--accent);
+  font-weight: 600;
+}
+.target-miss {
+  margin: 0;
+  font-size: 16px;
+  color: var(--warn);
+  font-weight: 600;
+}
+
+.stat-strip.compact {
+  grid-template-columns: repeat(4, 1fr);
+}
+.stat-strip.compact .stat-value { font-size: 18px; }
+
+.sparkline-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 12px;
+}
+.sparkline {
+  width: 100%;
+  height: 60px;
+  display: block;
+}
+
 /* landing: my rooms block */
 .my-rooms-block {
   background: rgba(126, 231, 135, 0.04);

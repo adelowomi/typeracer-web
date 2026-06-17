@@ -1,7 +1,14 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useRace } from "../race/RaceProvider";
-import { CODE_LANGUAGES, type CodeLanguage, type TextSourceKind } from "../race/types";
+import {
+  CODE_LANGUAGES,
+  RACE_MODES,
+  TEXT_LENGTHS,
+  type CodeLanguage,
+  type TextLength,
+  type TextSourceKind,
+} from "../race/types";
 
 const SOURCES: { kind: TextSourceKind; label: string; subtitle: string }[] = [
   { kind: "Quotes", label: "quotes", subtitle: "famous lines & passages" },
@@ -19,6 +26,7 @@ export function Lobby() {
     connectionId,
     error,
     setTextSource,
+    setRaceMode,
     startRace,
     leaveRoom,
   } = useRace();
@@ -42,6 +50,8 @@ export function Lobby() {
 
   const isHost = room.hostConnectionId === connectionId;
   const currentKind = room.textSource.kind;
+  const currentLength = room.textSource.length;
+  const currentMode = room.mode;
 
   const copyInvite = async () => {
     const url = `${window.location.origin}/?code=${room.code}`;
@@ -52,18 +62,32 @@ export function Lobby() {
 
   const handleSourcePick = async (kind: TextSourceKind) => {
     if (!isHost) return;
-    if (kind === "Code") {
-      await setTextSource({ kind, language });
-    } else {
-      await setTextSource({ kind, language: null });
-    }
+    await setTextSource({
+      kind,
+      language: kind === "Code" ? language : null,
+      length: currentLength,
+    });
   };
 
   const handleLanguageChange = async (lang: CodeLanguage) => {
     setLanguage(lang);
     if (isHost && currentKind === "Code") {
-      await setTextSource({ kind: "Code", language: lang });
+      await setTextSource({ kind: "Code", language: lang, length: currentLength });
     }
+  };
+
+  const handleLengthChange = async (length: TextLength) => {
+    if (!isHost) return;
+    await setTextSource({
+      kind: currentKind,
+      language: currentKind === "Code" ? language : null,
+      length,
+    });
+  };
+
+  const handleModeChange = async (mode: string) => {
+    if (!isHost) return;
+    await setRaceMode(mode);
   };
 
   const canStart =
@@ -91,7 +115,7 @@ export function Lobby() {
       <div className="terminal-body">
         <div className="invite-row">
           <div>
-            <div className="muted">invite code</div>
+            <div className="muted">{room.name ? room.name : "invite code"}</div>
             <div className="invite-code">{room.code}</div>
           </div>
           <button onClick={copyInvite} className="ghost">
@@ -116,6 +140,23 @@ export function Lobby() {
               </li>
             ))}
           </ul>
+        </section>
+
+        <section>
+          <h3>// race mode</h3>
+          <div className="source-grid four">
+            {RACE_MODES.map((m) => (
+              <button
+                key={m.value}
+                className={`source-card ${currentMode === m.value ? "selected" : ""}`}
+                disabled={!isHost}
+                onClick={() => handleModeChange(m.value)}
+              >
+                <strong>{m.label}</strong>
+                <span className="muted">{m.sub}</span>
+              </button>
+            ))}
+          </div>
         </section>
 
         <section>
@@ -150,17 +191,34 @@ export function Lobby() {
             </div>
           )}
 
+          {currentKind !== "Custom" && (
+            <div className="language-picker">
+              <span className="muted">length:</span>
+              {TEXT_LENGTHS.map((l) => (
+                <button
+                  key={l.value}
+                  className={`pill ${currentLength === l.value ? "selected" : ""}`}
+                  disabled={!isHost}
+                  onClick={() => handleLengthChange(l.value)}
+                  title={l.sub}
+                >
+                  {l.label}
+                </button>
+              ))}
+            </div>
+          )}
+
           {currentKind === "Custom" && isHost && (
             <div className="custom-text">
               <textarea
                 value={customText}
                 onChange={(e) => setCustomText(e.target.value)}
-                placeholder="paste 50–800 characters of text here…"
-                maxLength={800}
+                placeholder="paste 50–1500 characters of text here…"
+                maxLength={1500}
                 rows={4}
               />
               <span className="muted">
-                {customText.trim().length} / 800 (min 50)
+                {customText.trim().length} / 1500 (min 50)
               </span>
             </div>
           )}

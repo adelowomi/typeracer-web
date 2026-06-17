@@ -239,8 +239,10 @@ export function Landing() {
         </div>
 
         <p className="muted footer-links">
-          {user && <><Link to="/me/rooms">// my rooms</Link> · </>}
-          <Link to="/leaderboard">// global leaderboard</Link>
+          <Link to="/train">// personal trainer</Link>
+          {user && <> · <Link to="/me/rooms">// my rooms</Link></>}
+          {user && <> · <Link to="/me/training">// my training</Link></>}
+          {" · "}<Link to="/leaderboard">// global leaderboard</Link>
         </p>
 
         {error && (
