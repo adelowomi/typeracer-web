@@ -1,33 +1,40 @@
 import { useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { useAuth } from "../auth/AuthProvider";
 import { useRace } from "../race/RaceProvider";
 
-const NICKNAME_KEY = "typeracer.nickname";
+const GUEST_NICKNAME_KEY = "typeracer.guest.nickname";
 
 export function Landing() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { createRoom, joinRoom, error, clearError } = useRace();
-  const [nickname, setNickname] = useState<string>(
-    () => localStorage.getItem(NICKNAME_KEY) ?? "",
+  const [params] = useSearchParams();
+  const [guestNickname, setGuestNickname] = useState<string>(
+    () => localStorage.getItem(GUEST_NICKNAME_KEY) ?? "",
   );
-  const [joinCode, setJoinCode] = useState("");
+  const [roomName, setRoomName] = useState("");
+  const [joinCode, setJoinCode] = useState(params.get("code") ?? "");
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
 
-  const remember = (value: string) => {
-    setNickname(value);
-    localStorage.setItem(NICKNAME_KEY, value);
+  const rememberGuest = (value: string) => {
+    setGuestNickname(value);
+    localStorage.setItem(GUEST_NICKNAME_KEY, value);
   };
 
   const handleCreate = async (e: FormEvent) => {
     e.preventDefault();
+    if (!user) return;
     clearError();
-    if (!nickname.trim()) return;
     setBusy("create");
     try {
-      const room = await createRoom(nickname.trim());
+      const room = await createRoom({
+        nickname: null,
+        name: roomName.trim() || null,
+      });
       navigate(`/room/${room.code}`);
     } catch {
-      // error shown via context
+      // surfaced via context
     } finally {
       setBusy(null);
     }
@@ -36,13 +43,14 @@ export function Landing() {
   const handleJoin = async (e: FormEvent) => {
     e.preventDefault();
     clearError();
-    if (!nickname.trim() || !joinCode.trim()) return;
+    const nickname = user ? user.displayName : guestNickname.trim();
+    if (!nickname || !joinCode.trim()) return;
     setBusy("join");
     try {
-      const room = await joinRoom(joinCode.trim().toUpperCase(), nickname.trim());
+      const room = await joinRoom(joinCode.trim().toUpperCase(), user ? null : guestNickname.trim());
       navigate(`/room/${room.code}`);
     } catch {
-      // error shown via context
+      // surfaced via context
     } finally {
       setBusy(null);
     }
@@ -55,31 +63,61 @@ export function Landing() {
         <span className="dot dot-yellow" />
         <span className="dot dot-green" />
         <span className="terminal-title">typeracer ~ session</span>
+        <span className="terminal-stats">
+          {user ? (
+            <Link to="/me/rooms" className="auth-link">{user.displayName}</Link>
+          ) : (
+            <><Link to="/login" className="auth-link">login</Link> · <Link to="/register" className="auth-link">register</Link></>
+          )}
+        </span>
       </div>
       <div className="terminal-body">
         <pre className="ascii">{ART}</pre>
         <p className="prompt">
-          <span className="prompt-prefix">$</span> who's racing?
+          <span className="prompt-prefix">$</span>
+          {user ? ` welcome back, ${user.displayName}` : " who's racing?"}
         </p>
-        <label className="field">
-          <span className="field-label">nickname</span>
-          <input
-            type="text"
-            maxLength={24}
-            placeholder="enter handle"
-            value={nickname}
-            onChange={(e) => remember(e.target.value)}
-            autoFocus
-          />
-        </label>
+
+        {!user && (
+          <label className="field">
+            <span className="field-label">nickname (guest)</span>
+            <input
+              type="text"
+              maxLength={24}
+              placeholder="enter handle"
+              value={guestNickname}
+              onChange={(e) => rememberGuest(e.target.value)}
+              autoFocus
+            />
+          </label>
+        )}
 
         <div className="actions">
           <form onSubmit={handleCreate} className="action-card">
             <h3>// host a room</h3>
-            <p>generate an invite code and wait for friends.</p>
-            <button type="submit" disabled={!nickname.trim() || busy !== null}>
-              {busy === "create" ? "creating…" : "create_room()"}
-            </button>
+            {user ? (
+              <>
+                <p>persistent room owned by you. friends can rejoin anytime.</p>
+                <label className="field">
+                  <span className="field-label">room name (optional)</span>
+                  <input
+                    type="text"
+                    maxLength={80}
+                    placeholder="lunch break"
+                    value={roomName}
+                    onChange={(e) => setRoomName(e.target.value)}
+                  />
+                </label>
+                <button type="submit" className="primary" disabled={busy !== null}>
+                  {busy === "create" ? "creating…" : "create_room()"}
+                </button>
+              </>
+            ) : (
+              <>
+                <p>log in to create a persistent room with leaderboards.</p>
+                <Link to="/login" className="primary-link">login →</Link>
+              </>
+            )}
           </form>
 
           <form onSubmit={handleJoin} className="action-card">
@@ -97,12 +135,20 @@ export function Landing() {
             </label>
             <button
               type="submit"
-              disabled={!nickname.trim() || !joinCode.trim() || busy !== null}
+              disabled={
+                !joinCode.trim() ||
+                (!user && !guestNickname.trim()) ||
+                busy !== null
+              }
             >
               {busy === "join" ? "joining…" : "join_room()"}
             </button>
           </form>
         </div>
+
+        <p className="muted">
+          <Link to="/leaderboard">// global leaderboard</Link>
+        </p>
 
         {error && (
           <p className="error">

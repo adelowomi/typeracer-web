@@ -11,6 +11,7 @@ export interface RacerDto {
   connectionId: string;
   nickname: string;
   color: string;
+  userId: string | null;
   charIndex: number;
   wpm: number;
   accuracy: number;
@@ -19,6 +20,8 @@ export interface RacerDto {
 
 export interface RoomDto {
   code: string;
+  name: string | null;
+  ownerUserId: string | null;
   hostConnectionId: string;
   status: RoomStatus;
   textSource: TextSourceDto;
@@ -46,6 +49,11 @@ export interface RaceResultDto {
   wpm: number;
   accuracy: number;
   durationSeconds: number | null;
+}
+
+export interface CreateRoomRequest {
+  nickname: string | null;
+  name: string | null;
 }
 
 export const CODE_LANGUAGES = ["python", "javascript", "typescript", "csharp"] as const;

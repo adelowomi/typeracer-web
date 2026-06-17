@@ -14,7 +14,10 @@ import {
   HubConnectionState,
   LogLevel,
 } from "@microsoft/signalr";
+import { API_BASE_URL } from "../api/client";
+import { useAuth } from "../auth/AuthProvider";
 import type {
+  CreateRoomRequest,
   RaceResultDto,
   RaceStartedPayload,
   RacerDto,
@@ -22,9 +25,6 @@ import type {
   RoomDto,
   TextSourceDto,
 } from "./types";
-
-const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL ?? "http://localhost:5085";
 
 type Phase = "idle" | "lobby" | "countdown" | "racing" | "finished";
 
@@ -40,8 +40,8 @@ interface RaceState {
 }
 
 interface RaceContextValue extends RaceState {
-  createRoom: (nickname: string) => Promise<RoomDto>;
-  joinRoom: (code: string, nickname: string) => Promise<RoomDto>;
+  createRoom: (request: CreateRoomRequest) => Promise<RoomDto>;
+  joinRoom: (code: string, nickname: string | null) => Promise<RoomDto>;
   leaveRoom: () => Promise<void>;
   setTextSource: (source: TextSourceDto) => Promise<void>;
   startRace: (customText?: string) => Promise<void>;
@@ -64,8 +64,14 @@ const INITIAL_STATE: RaceState = {
 };
 
 export function RaceProvider({ children }: { children: ReactNode }) {
+  const { token } = useAuth();
   const [state, setState] = useState<RaceState>(INITIAL_STATE);
   const connectionRef = useRef<HubConnection | null>(null);
+  const tokenRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    tokenRef.current = token;
+  }, [token]);
 
   const ensureConnection = useCallback(async (): Promise<HubConnection> => {
     if (
@@ -76,7 +82,9 @@ export function RaceProvider({ children }: { children: ReactNode }) {
     }
 
     const connection = new HubConnectionBuilder()
-      .withUrl(`${API_BASE_URL}/hub/race`)
+      .withUrl(`${API_BASE_URL}/hub/race`, {
+        accessTokenFactory: () => tokenRef.current ?? "",
+      })
       .withAutomaticReconnect()
       .configureLogging(LogLevel.Warning)
       .build();
@@ -169,10 +177,10 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const createRoom = useCallback(
-    async (nickname: string): Promise<RoomDto> => {
+    async (request: CreateRoomRequest): Promise<RoomDto> => {
       const connection = await ensureConnection();
       try {
-        const room = await connection.invoke<RoomDto>("CreateRoom", nickname);
+        const room = await connection.invoke<RoomDto>("CreateRoom", request);
         setState((s) => ({
           ...s,
           room,
@@ -191,7 +199,7 @@ export function RaceProvider({ children }: { children: ReactNode }) {
   );
 
   const joinRoom = useCallback(
-    async (code: string, nickname: string): Promise<RoomDto> => {
+    async (code: string, nickname: string | null): Promise<RoomDto> => {
       const connection = await ensureConnection();
       try {
         const room = await connection.invoke<RoomDto>("JoinRoom", code, nickname);
