@@ -241,6 +241,7 @@ export function Landing() {
         <p className="muted footer-links">
           <Link to="/train">// personal trainer</Link>
           {" · "}<Link to="/hangman">// hangman with teams</Link>
+          {" · "}<Link to="/xo">// x and o</Link>
           {user && <> · <Link to="/me/rooms">// my rooms</Link></>}
           {user && <> · <Link to="/me/training">// my training</Link></>}
           {" · "}<Link to="/leaderboard">// global leaderboard</Link>

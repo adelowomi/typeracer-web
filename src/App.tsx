@@ -16,6 +16,10 @@ import { HangmanProvider } from "./hangman/HangmanProvider";
 import { HangmanLanding } from "./hangman/HangmanLanding";
 import { HangmanLobby } from "./hangman/HangmanLobby";
 import { HangmanPlay } from "./hangman/HangmanPlay";
+import { XoProvider } from "./xo/XoProvider";
+import { XoLanding } from "./xo/XoLanding";
+import { XoLobby } from "./xo/XoLobby";
+import { XoPlay } from "./xo/XoPlay";
 
 export default function App() {
   return (
@@ -23,6 +27,7 @@ export default function App() {
       <AuthProvider>
         <RaceProvider>
           <HangmanProvider>
+          <XoProvider>
           <main className="app">
             <Routes>
               <Route path="/" element={<Landing />} />
@@ -39,12 +44,16 @@ export default function App() {
               <Route path="/hangman" element={<HangmanLanding />} />
               <Route path="/hangman/room/:code" element={<HangmanLobby />} />
               <Route path="/hangman/room/:code/play" element={<HangmanPlay />} />
+              <Route path="/xo" element={<XoLanding />} />
+              <Route path="/xo/room/:code" element={<XoLobby />} />
+              <Route path="/xo/room/:code/play" element={<XoPlay />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <footer className="app-footer">
               <span className="muted">// typeracer · play with friends</span>
             </footer>
           </main>
+          </XoProvider>
           </HangmanProvider>
         </RaceProvider>
       </AuthProvider>
