@@ -531,6 +531,24 @@ a:hover { text-decoration: underline; }
 }
 .stats-table tbody tr:hover { background: var(--bg); }
 
+/* landing: my rooms block */
+.my-rooms-block {
+  background: rgba(126, 231, 135, 0.04);
+  border: 1px dashed var(--accent-dim);
+  border-radius: 6px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.block-head h3 { margin: 0; }
+.footer-links { margin: 0; font-size: 12px; }
+
 /* recent races */
 .recent-races { display: flex; flex-direction: column; gap: 12px; }
 .recent-race {

@@ -1,13 +1,22 @@
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
+import { api } from "../api/client";
 import { useAuth } from "../auth/AuthProvider";
 import { useRace } from "../race/RaceProvider";
 
 const GUEST_NICKNAME_KEY = "typeracer.guest.nickname";
 
+interface RoomSummary {
+  id: string;
+  code: string;
+  name: string | null;
+  lastActiveAt: string;
+  raceCount: number;
+}
+
 export function Landing() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, token, logout } = useAuth();
   const { createRoom, joinRoom, error, clearError } = useRace();
   const [params] = useSearchParams();
   const [guestNickname, setGuestNickname] = useState<string>(
@@ -16,10 +25,29 @@ export function Landing() {
   const [roomName, setRoomName] = useState("");
   const [joinCode, setJoinCode] = useState(params.get("code") ?? "");
   const [busy, setBusy] = useState<"create" | "join" | null>(null);
+  const [myRooms, setMyRooms] = useState<RoomSummary[] | null>(null);
+  const [roomsError, setRoomsError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!token) {
+      setMyRooms(null);
+      return;
+    }
+    api<RoomSummary[]>("/rooms/mine", { token })
+      .then(setMyRooms)
+      .catch((e) => setRoomsError(e.message));
+  }, [token]);
 
   const rememberGuest = (value: string) => {
     setGuestNickname(value);
     localStorage.setItem(GUEST_NICKNAME_KEY, value);
+  };
+
+  const refreshRooms = () => {
+    if (!token) return;
+    api<RoomSummary[]>("/rooms/mine", { token })
+      .then(setMyRooms)
+      .catch((e) => setRoomsError(e.message));
   };
 
   const handleCreate = async (e: FormEvent) => {
@@ -56,6 +84,19 @@ export function Landing() {
     }
   };
 
+  const handleRejoin = async (code: string) => {
+    clearError();
+    setBusy("join");
+    try {
+      const room = await joinRoom(code, null);
+      navigate(`/room/${room.code}`);
+    } catch {
+      // surfaced via context
+    } finally {
+      setBusy(null);
+    }
+  };
+
   return (
     <div className="terminal-window landing">
       <div className="terminal-titlebar">
@@ -65,9 +106,16 @@ export function Landing() {
         <span className="terminal-title">typeracer ~ session</span>
         <span className="terminal-stats">
           {user ? (
-            <Link to="/me/rooms" className="auth-link">{user.displayName}</Link>
+            <>
+              <span className="muted">{user.displayName}</span>
+              <button onClick={logout} className="link-button">log out</button>
+            </>
           ) : (
-            <><Link to="/login" className="auth-link">login</Link> · <Link to="/register" className="auth-link">register</Link></>
+            <>
+              <Link to="/login" className="auth-link">login</Link>
+              <span className="muted"> · </span>
+              <Link to="/register" className="auth-link">register</Link>
+            </>
           )}
         </span>
       </div>
@@ -90,6 +138,50 @@ export function Landing() {
               autoFocus
             />
           </label>
+        )}
+
+        {user && myRooms && myRooms.length > 0 && (
+          <section className="my-rooms-block">
+            <div className="block-head">
+              <h3>// your rooms</h3>
+              <button className="link-button" onClick={refreshRooms}>refresh</button>
+            </div>
+            <ul className="room-list">
+              {myRooms.slice(0, 5).map((r) => (
+                <li key={r.id}>
+                  <div>
+                    <div className="room-name">{r.name ?? r.code}</div>
+                    <div className="muted">
+                      {r.code} · {r.raceCount} race{r.raceCount === 1 ? "" : "s"}
+                    </div>
+                  </div>
+                  <div className="room-actions">
+                    <button
+                      className="primary"
+                      disabled={busy !== null}
+                      onClick={() => handleRejoin(r.code)}
+                    >
+                      rejoin →
+                    </button>
+                    <Link to={`/room/${r.code}/leaderboard`}>stats</Link>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            {myRooms.length > 5 && (
+              <p className="muted">
+                <Link to="/me/rooms">see all {myRooms.length} rooms →</Link>
+              </p>
+            )}
+          </section>
+        )}
+
+        {user && myRooms && myRooms.length === 0 && (
+          <p className="muted">// no rooms yet — host one below</p>
+        )}
+
+        {user && roomsError && (
+          <p className="error"><span className="prompt-prefix">!</span> could not load your rooms: {roomsError}</p>
         )}
 
         <div className="actions">
@@ -146,7 +238,8 @@ export function Landing() {
           </form>
         </div>
 
-        <p className="muted">
+        <p className="muted footer-links">
+          {user && <><Link to="/me/rooms">// my rooms</Link> · </>}
           <Link to="/leaderboard">// global leaderboard</Link>
         </p>
 
