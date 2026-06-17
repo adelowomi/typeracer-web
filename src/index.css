@@ -649,6 +649,122 @@ a:hover { text-decoration: underline; }
 .block-head h3 { margin: 0; }
 .footer-links { margin: 0; font-size: 12px; }
 
+/* hangman */
+.hangman-art {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.05;
+  color: var(--fg-dim);
+  text-align: center;
+}
+.board-grid {
+  display: grid;
+  gap: 12px;
+  align-items: stretch;
+}
+@media (max-width: 700px) {
+  .board-grid { grid-template-columns: 1fr !important; }
+}
+.team-board {
+  background: var(--bg);
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  opacity: 0.8;
+}
+.team-board.mine { opacity: 1; }
+.team-board.active-turn { box-shadow: 0 0 0 2px var(--accent); }
+.team-board-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.masked-word {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  font-size: 26px;
+  letter-spacing: 0.05em;
+}
+.masked-word .ch {
+  display: inline-block;
+  width: 1.1em;
+  text-align: center;
+  border-bottom: 2px solid var(--border);
+  color: var(--fg);
+}
+.masked-word .ch.blank { color: var(--fg-faint); }
+.masked-word .ch.space { border-bottom-color: transparent; color: var(--fg-faint); }
+.masked-word .ch.filled { color: var(--accent); border-bottom-color: var(--accent-dim); }
+.guessed { min-height: 18px; }
+
+.keyboard {
+  display: grid;
+  grid-template-columns: repeat(13, 1fr);
+  gap: 4px;
+  margin-top: 4px;
+}
+@media (max-width: 700px) {
+  .keyboard { grid-template-columns: repeat(7, 1fr); }
+}
+.key {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 10px 0;
+  font-size: 14px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.1s;
+}
+.key:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.key.used { text-decoration: line-through; opacity: 0.3; cursor: not-allowed; }
+.key.playable { border-color: var(--accent-dim); }
+.key:disabled { cursor: not-allowed; }
+
+.team-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+.team-panel {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.team-panel.active {
+  border-color: var(--accent);
+}
+.team-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-left: 4px solid;
+  padding-left: 8px;
+}
+.team-header strong { cursor: pointer; }
+.team-roster {
+  list-style: none;
+  margin: 0; padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.team-roster li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+.ghost.small {
+  font-size: 11px;
+  padding: 4px 8px;
+}
+
 /* recent races */
 .recent-races { display: flex; flex-direction: column; gap: 12px; }
 .recent-race {

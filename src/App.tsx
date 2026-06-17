@@ -12,12 +12,17 @@ import { RoomLeaderboard } from "./screens/RoomLeaderboard";
 import { GlobalLeaderboard } from "./screens/GlobalLeaderboard";
 import { Training } from "./screens/Training";
 import { TrainingHistory } from "./screens/TrainingHistory";
+import { HangmanProvider } from "./hangman/HangmanProvider";
+import { HangmanLanding } from "./hangman/HangmanLanding";
+import { HangmanLobby } from "./hangman/HangmanLobby";
+import { HangmanPlay } from "./hangman/HangmanPlay";
 
 export default function App() {
   return (
     <BrowserRouter>
       <AuthProvider>
         <RaceProvider>
+          <HangmanProvider>
           <main className="app">
             <Routes>
               <Route path="/" element={<Landing />} />
@@ -31,12 +36,16 @@ export default function App() {
               <Route path="/room/:code/race" element={<Race />} />
               <Route path="/room/:code/results" element={<Results />} />
               <Route path="/room/:code/leaderboard" element={<RoomLeaderboard />} />
+              <Route path="/hangman" element={<HangmanLanding />} />
+              <Route path="/hangman/room/:code" element={<HangmanLobby />} />
+              <Route path="/hangman/room/:code/play" element={<HangmanPlay />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <footer className="app-footer">
               <span className="muted">// typeracer · play with friends</span>
             </footer>
           </main>
+          </HangmanProvider>
         </RaceProvider>
       </AuthProvider>
     </BrowserRouter>

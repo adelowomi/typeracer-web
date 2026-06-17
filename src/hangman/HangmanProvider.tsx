@@ -1,0 +1,235 @@
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import {
+  HubConnection,
+  HubConnectionBuilder,
+  HubConnectionState,
+  LogLevel,
+} from "@microsoft/signalr";
+import { API_BASE_URL } from "../api/client";
+import { useAuth } from "../auth/AuthProvider";
+import type {
+  ActiveTurnDto,
+  CreateHangmanRoomRequest,
+  HangmanRoomDto,
+  LetterGuessedDto,
+  MatchEndedDto,
+  RoundEndedDto,
+} from "./types";
+
+interface HangmanState {
+  room: HangmanRoomDto | null;
+  connectionId: string | null;
+  lastRoundEnded: RoundEndedDto | null;
+  lastMatchEnded: MatchEndedDto | null;
+  error: string | null;
+}
+
+interface HangmanContextValue extends HangmanState {
+  createRoom: (request: CreateHangmanRoomRequest) => Promise<HangmanRoomDto>;
+  joinRoom: (code: string, nickname: string | null) => Promise<HangmanRoomDto>;
+  assignToTeam: (teamId: string) => Promise<void>;
+  renameTeam: (teamId: string, name: string) => Promise<void>;
+  setWordSource: (source: string, category: string, difficulty: string) => Promise<void>;
+  startMatch: () => Promise<void>;
+  guessLetter: (letter: string) => Promise<void>;
+  leaveRoom: () => Promise<void>;
+  clearError: () => void;
+  clearMatchEnded: () => void;
+}
+
+const INITIAL: HangmanState = {
+  room: null,
+  connectionId: null,
+  lastRoundEnded: null,
+  lastMatchEnded: null,
+  error: null,
+};
+
+const HangmanContext = createContext<HangmanContextValue | null>(null);
+
+export function HangmanProvider({ children }: { children: ReactNode }) {
+  const { token } = useAuth();
+  const [state, setState] = useState<HangmanState>(INITIAL);
+  const connectionRef = useRef<HubConnection | null>(null);
+  const tokenRef = useRef<string | null>(null);
+
+  useEffect(() => { tokenRef.current = token; }, [token]);
+
+  const ensureConnection = useCallback(async (): Promise<HubConnection> => {
+    if (connectionRef.current && connectionRef.current.state === HubConnectionState.Connected) {
+      return connectionRef.current;
+    }
+
+    const connection = new HubConnectionBuilder()
+      .withUrl(`${API_BASE_URL}/hub/hangman`, { accessTokenFactory: () => tokenRef.current ?? "" })
+      .withAutomaticReconnect()
+      .configureLogging(LogLevel.Warning)
+      .build();
+
+    connection.on("RoomState", (room: HangmanRoomDto) => {
+      setState((s) => ({ ...s, room }));
+    });
+
+    connection.on("PlayerJoined", () => {
+      // RoomState follows
+    });
+
+    connection.on("PlayerLeft", (id: string) => {
+      setState((s) => {
+        if (!s.room) return s;
+        return { ...s, room: { ...s.room, players: s.room.players.filter((p) => p.connectionId !== id) } };
+      });
+    });
+
+    connection.on("RoundStarted", () => {
+      setState((s) => ({ ...s, lastRoundEnded: null, lastMatchEnded: null }));
+    });
+
+    connection.on("LetterGuessed", (payload: LetterGuessedDto) => {
+      setState((s) => {
+        if (!s.room || !s.room.currentRound) return s;
+        const boards = s.room.currentRound.boards.map((b) =>
+          b.teamId === payload.teamId
+            ? {
+                ...b,
+                mask: payload.mask,
+                wrongCount: payload.wrongCount,
+                guessedLetters: [...new Set([...b.guessedLetters, payload.letter])],
+              }
+            : b,
+        );
+        return {
+          ...s,
+          room: { ...s.room, currentRound: { ...s.room.currentRound, boards } },
+        };
+      });
+    });
+
+    connection.on("TurnAdvanced", (turn: ActiveTurnDto | null) => {
+      setState((s) => {
+        if (!s.room || !s.room.currentRound) return s;
+        return {
+          ...s,
+          room: { ...s.room, currentRound: { ...s.room.currentRound, activeTurn: turn } },
+        };
+      });
+    });
+
+    connection.on("RoundEnded", (payload: RoundEndedDto) => {
+      setState((s) => ({ ...s, lastRoundEnded: payload }));
+    });
+
+    connection.on("MatchEnded", (payload: MatchEndedDto) => {
+      setState((s) => ({ ...s, lastMatchEnded: payload }));
+    });
+
+    connection.onclose(() => {
+      setState((s) => ({ ...s, connectionId: null }));
+    });
+
+    await connection.start();
+    connectionRef.current = connection;
+    setState((s) => ({ ...s, connectionId: connection.connectionId ?? null }));
+    return connection;
+  }, []);
+
+  const createRoom = useCallback(async (request: CreateHangmanRoomRequest) => {
+    const conn = await ensureConnection();
+    try {
+      const room = await conn.invoke<HangmanRoomDto>("CreateRoom", request);
+      setState((s) => ({ ...s, room, error: null, connectionId: conn.connectionId ?? s.connectionId, lastRoundEnded: null, lastMatchEnded: null }));
+      return room;
+    } catch (err) {
+      const message = errorMessage(err);
+      setState((s) => ({ ...s, error: message }));
+      throw err;
+    }
+  }, [ensureConnection]);
+
+  const joinRoom = useCallback(async (code: string, nickname: string | null) => {
+    const conn = await ensureConnection();
+    try {
+      const room = await conn.invoke<HangmanRoomDto>("JoinRoom", { code, nickname });
+      setState((s) => ({ ...s, room, error: null, connectionId: conn.connectionId ?? s.connectionId, lastRoundEnded: null, lastMatchEnded: null }));
+      return room;
+    } catch (err) {
+      const message = errorMessage(err);
+      setState((s) => ({ ...s, error: message }));
+      throw err;
+    }
+  }, [ensureConnection]);
+
+  const assignToTeam = useCallback(async (teamId: string) => {
+    if (!connectionRef.current) return;
+    try { await connectionRef.current.invoke("AssignToTeam", teamId); }
+    catch (err) { setState((s) => ({ ...s, error: errorMessage(err) })); }
+  }, []);
+
+  const renameTeam = useCallback(async (teamId: string, name: string) => {
+    if (!connectionRef.current) return;
+    try { await connectionRef.current.invoke("RenameTeam", teamId, name); }
+    catch (err) { setState((s) => ({ ...s, error: errorMessage(err) })); }
+  }, []);
+
+  const setWordSource = useCallback(async (source: string, category: string, difficulty: string) => {
+    if (!connectionRef.current) return;
+    try { await connectionRef.current.invoke("SetWordSource", source, category, difficulty); }
+    catch (err) { setState((s) => ({ ...s, error: errorMessage(err) })); }
+  }, []);
+
+  const startMatch = useCallback(async () => {
+    if (!connectionRef.current) return;
+    try { await connectionRef.current.invoke("StartMatch"); }
+    catch (err) { setState((s) => ({ ...s, error: errorMessage(err) })); }
+  }, []);
+
+  const guessLetter = useCallback(async (letter: string) => {
+    if (!connectionRef.current) return;
+    try { await connectionRef.current.invoke("GuessLetter", letter); }
+    catch (err) { setState((s) => ({ ...s, error: errorMessage(err) })); }
+  }, []);
+
+  const leaveRoom = useCallback(async () => {
+    if (!connectionRef.current) return;
+    try { await connectionRef.current.invoke("LeaveRoom"); } catch {}
+    setState(() => ({ ...INITIAL, connectionId: connectionRef.current?.connectionId ?? null }));
+  }, []);
+
+  const clearError = useCallback(() => setState((s) => ({ ...s, error: null })), []);
+  const clearMatchEnded = useCallback(() => setState((s) => ({ ...s, lastMatchEnded: null })), []);
+
+  useEffect(() => {
+    return () => { connectionRef.current?.stop().catch(() => {}); };
+  }, []);
+
+  const value = useMemo<HangmanContextValue>(() => ({
+    ...state,
+    createRoom, joinRoom, assignToTeam, renameTeam, setWordSource, startMatch, guessLetter, leaveRoom, clearError, clearMatchEnded,
+  }), [state, createRoom, joinRoom, assignToTeam, renameTeam, setWordSource, startMatch, guessLetter, leaveRoom, clearError, clearMatchEnded]);
+
+  return <HangmanContext.Provider value={value}>{children}</HangmanContext.Provider>;
+}
+
+export function useHangman(): HangmanContextValue {
+  const ctx = useContext(HangmanContext);
+  if (!ctx) throw new Error("useHangman must be used within HangmanProvider");
+  return ctx;
+}
+
+function errorMessage(err: unknown): string {
+  if (err instanceof Error) {
+    const match = err.message.match(/HubException: (.+?)(?:\s+HResult|$)/);
+    if (match) return match[1];
+    return err.message;
+  }
+  return "Something went wrong";
+}
