@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useHangman } from "./HangmanProvider";
+import { TeamChat } from "./TeamChat";
 
 export function HangmanLobby() {
   const { code } = useParams<{ code: string }>();
@@ -126,6 +127,8 @@ export function HangmanLobby() {
         ) : (
           <p className="muted">waiting for host to start the match…</p>
         )}
+
+        <TeamChat />
 
         {error && <p className="error"><span className="prompt-prefix">!</span> {error}</p>}
       </div>

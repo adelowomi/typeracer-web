@@ -26,12 +26,23 @@ import type {
   RoundEndedDto,
 } from "./types";
 
+export interface ChatMessage {
+  id: number;
+  teamId: string;
+  playerConnectionId: string;
+  nickname: string;
+  message: string;
+  at: number;
+}
+
 interface HangmanState {
   room: HangmanRoomDto | null;
   connectionId: string | null;
   lastRoundEnded: RoundEndedDto | null;
   lastMatchEnded: MatchEndedDto | null;
   turnSecondsRemaining: number | null;
+  nextRoundCountdown: number | null;
+  chatMessages: ChatMessage[];
   error: string | null;
 }
 
@@ -43,10 +54,13 @@ interface HangmanContextValue extends HangmanState {
   setWordSource: (source: string, category: string, difficulty: string) => Promise<void>;
   startMatch: () => Promise<void>;
   guessLetter: (letter: string) => Promise<void>;
+  sendChat: (message: string) => Promise<void>;
   leaveRoom: () => Promise<void>;
   clearError: () => void;
   clearMatchEnded: () => void;
 }
+
+const MAX_CHAT_MESSAGES = 100;
 
 const INITIAL: HangmanState = {
   room: null,
@@ -54,6 +68,8 @@ const INITIAL: HangmanState = {
   lastRoundEnded: null,
   lastMatchEnded: null,
   turnSecondsRemaining: null,
+  nextRoundCountdown: null,
+  chatMessages: [],
   error: null,
 };
 
@@ -108,7 +124,11 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
     });
 
     connection.on("RoundStarted", () => {
-      setState((s) => ({ ...s, lastRoundEnded: null, lastMatchEnded: null, turnSecondsRemaining: null }));
+      setState((s) => ({ ...s, lastRoundEnded: null, lastMatchEnded: null, turnSecondsRemaining: null, nextRoundCountdown: null }));
+    });
+
+    connection.on("NextRoundCountdown", (n: number) => {
+      setState((s) => ({ ...s, nextRoundCountdown: n > 0 ? n : null }));
     });
 
     connection.on("TurnTick", (seconds: number) => {
@@ -177,6 +197,22 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
 
     connection.on("MatchEnded", (payload: MatchEndedDto) => {
       setState((s) => ({ ...s, lastMatchEnded: payload }));
+    });
+
+    connection.on("Chat", (payload: { teamId: string; playerConnectionId: string; nickname: string; message: string }) => {
+      setState((s) => {
+        const msg: ChatMessage = {
+          id: Date.now() + Math.random(),
+          teamId: payload.teamId,
+          playerConnectionId: payload.playerConnectionId,
+          nickname: payload.nickname,
+          message: payload.message,
+          at: Date.now(),
+        };
+        const next = [...s.chatMessages, msg];
+        if (next.length > MAX_CHAT_MESSAGES) next.splice(0, next.length - MAX_CHAT_MESSAGES);
+        return { ...s, chatMessages: next };
+      });
     });
 
     connection.onclose(() => {
@@ -249,6 +285,14 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
     catch (err) { setState((s) => ({ ...s, error: errorMessage(err) })); }
   }, []);
 
+  const sendChat = useCallback(async (message: string) => {
+    if (!connectionRef.current) return;
+    const trimmed = message.trim();
+    if (!trimmed) return;
+    try { await connectionRef.current.invoke("SendChat", trimmed); }
+    catch (err) { setState((s) => ({ ...s, error: errorMessage(err) })); }
+  }, []);
+
   const leaveRoom = useCallback(async () => {
     if (!connectionRef.current) return;
     try { await connectionRef.current.invoke("LeaveRoom"); } catch {}
@@ -266,8 +310,8 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<HangmanContextValue>(() => ({
     ...state,
-    createRoom, joinRoom, assignToTeam, renameTeam, setWordSource, startMatch, guessLetter, leaveRoom, clearError, clearMatchEnded,
-  }), [state, createRoom, joinRoom, assignToTeam, renameTeam, setWordSource, startMatch, guessLetter, leaveRoom, clearError, clearMatchEnded]);
+    createRoom, joinRoom, assignToTeam, renameTeam, setWordSource, startMatch, guessLetter, sendChat, leaveRoom, clearError, clearMatchEnded,
+  }), [state, createRoom, joinRoom, assignToTeam, renameTeam, setWordSource, startMatch, guessLetter, sendChat, leaveRoom, clearError, clearMatchEnded]);
 
   return <HangmanContext.Provider value={value}>{children}</HangmanContext.Provider>;
 }

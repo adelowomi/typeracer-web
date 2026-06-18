@@ -2,13 +2,14 @@ import { useEffect, useMemo } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useHangman } from "./HangmanProvider";
 import { HangmanArt } from "./HangmanArt";
+import { TeamChat } from "./TeamChat";
 
 const LETTERS = "abcdefghijklmnopqrstuvwxyz".split("");
 
 export function HangmanPlay() {
   const { code } = useParams<{ code: string }>();
   const navigate = useNavigate();
-  const { room, connectionId, lastRoundEnded, lastMatchEnded, turnSecondsRemaining, guessLetter, leaveRoom, error, clearMatchEnded } = useHangman();
+  const { room, connectionId, lastRoundEnded, lastMatchEnded, turnSecondsRemaining, nextRoundCountdown, guessLetter, leaveRoom, error, clearMatchEnded } = useHangman();
 
   useEffect(() => {
     if (!room) navigate("/hangman", { replace: true });
@@ -26,10 +27,16 @@ export function HangmanPlay() {
     }
   }, [room, code, navigate]);
 
-  // Keyboard support
+  // Keyboard support — but yield to focused text inputs (e.g. team chat) so they
+  // don't have their keystrokes hijacked.
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const target = e.target as HTMLElement | null;
+      if (target) {
+        const tag = target.tagName;
+        if (tag === "INPUT" || tag === "TEXTAREA" || target.isContentEditable) return;
+      }
       const key = e.key.toLowerCase();
       if (key.length === 1 && key >= "a" && key <= "z") {
         e.preventDefault();
@@ -154,7 +161,16 @@ export function HangmanPlay() {
                   </li>
                 ))}
               </ul>
-              {room.roundsPlayed < room.bestOf && <p className="muted small">next round starting…</p>}
+              {room.roundsPlayed < room.bestOf && (
+                nextRoundCountdown !== null ? (
+                  <div className="next-round-countdown">
+                    <span className="muted small">next round in</span>
+                    <span className="next-round-number">{nextRoundCountdown}</span>
+                  </div>
+                ) : (
+                  <p className="muted small">next round starting…</p>
+                )
+              )}
             </div>
           );
         })()}
@@ -185,6 +201,8 @@ export function HangmanPlay() {
             </div>
           </div>
         )}
+
+        <TeamChat />
 
         {error && <p className="error"><span className="prompt-prefix">!</span> {error}</p>}
       </div>

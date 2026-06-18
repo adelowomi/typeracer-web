@@ -112,7 +112,19 @@ export interface CreateHangmanRoomRequest {
   turnSeconds: number;
 }
 
-export const HANGMAN_CATEGORIES = ["movies", "code", "animals"] as const;
+export const HANGMAN_CATEGORIES = [
+  "movies",
+  "music",
+  "books",
+  "countries",
+  "capitals",
+  "foods",
+  "sports",
+  "animals",
+  "tech",
+  "code",
+  "brands",
+] as const;
 export const HANGMAN_DIFFICULTIES: Difficulty[] = ["Easy", "Medium", "Hard"];
 export const HANGMAN_TEAM_MODES: { value: TeamMode; label: string; sub: string }[] = [
   { value: "TeamVsTeam", label: "team vs team", sub: "head-to-head on the same word" },
