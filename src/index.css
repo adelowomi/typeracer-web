@@ -652,6 +652,22 @@ a:hover { text-decoration: underline; }
 .absent { opacity: 0.45; }
 .badge.absent-badge { color: var(--warn); border-color: var(--warn); }
 
+.team-board.redacted {
+  background: rgba(0, 0, 0, 0.2);
+}
+.masked-word.blurred .ch.filled {
+  color: var(--fg-faint);
+  text-shadow: 0 0 6px var(--fg-dim);
+}
+
+.round-result { gap: 6px; }
+.word-reveal {
+  font-size: 18px;
+  margin: 0;
+  text-align: center;
+  letter-spacing: 0.04em;
+}
+
 .turn-banner {
   display: flex;
   align-items: center;

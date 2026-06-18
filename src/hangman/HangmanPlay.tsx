@@ -79,23 +79,26 @@ export function HangmanPlay() {
               const isMy = board.teamId === myTeamId;
               const teamActive = activeTurn?.teamId === board.teamId;
               const activePlayer = teamActive ? room.players.find(p => p.connectionId === activeTurn?.playerConnectionId) : null;
+              const redacted = board.redacted;
               return (
-                <div key={board.teamId} className={`team-board ${isMy ? "mine" : ""} ${teamActive ? "active-turn" : ""}`} style={{ borderColor: team?.color }}>
+                <div key={board.teamId} className={`team-board ${isMy ? "mine" : ""} ${teamActive ? "active-turn" : ""} ${redacted ? "redacted" : ""}`} style={{ borderColor: team?.color }}>
                   <div className="team-board-head">
                     <strong style={{ color: team?.color }}>{team?.name ?? "—"}</strong>
                     <span className="muted small">{board.wrongCount}/{board.maxWrong}</span>
                     {board.solved && <span className="badge you">SOLVED</span>}
+                    {redacted && <span className="badge absent-badge">hidden</span>}
                   </div>
                   <HangmanArt wrong={board.wrongCount} />
-                  <div className="masked-word">
+                  <div className={`masked-word ${redacted ? "blurred" : ""}`}>
                     {board.mask.split("").map((c, i) => (
                       <span key={i} className={c === "_" ? "ch blank" : c === " " ? "ch space" : "ch filled"}>
-                        {c === "_" ? "_" : c === " " ? "·" : c}
+                        {c === "_" ? "_" : c === " " ? "·" : redacted ? "★" : c}
                       </span>
                     ))}
                   </div>
                   <div className="guessed">
-                    {board.guessedLetters.length > 0 && <span className="muted small">guessed: {board.guessedLetters.join(" ")}</span>}
+                    {!redacted && board.guessedLetters.length > 0 && <span className="muted small">guessed: {board.guessedLetters.join(" ")}</span>}
+                    {redacted && <span className="muted small">opponent's letters hidden</span>}
                   </div>
                   {teamActive && activePlayer && (
                     <p className="muted small">
@@ -129,21 +132,32 @@ export function HangmanPlay() {
           <p className="muted small hint">your team is up — wait for your turn</p>
         )}
 
-        {lastRoundEnded && room.status === "RoundResults" && (
-          <div className="finished-block">
-            <p className="screen-title">// round over — the word was <strong style={{ color: "var(--accent)" }}>{lastRoundEnded.word}</strong></p>
-            <ul className="team-roster">
-              {lastRoundEnded.perTeam.map((t) => (
-                <li key={t.teamId}>
-                  <span>{t.teamName}</span>
-                  <span className={t.solved ? "target-hit" : "target-miss"}>{t.solved ? "✓ solved" : "× lost"}</span>
-                  {t.solveSeconds && <span className="muted small">{t.solveSeconds.toFixed(1)}s</span>}
-                </li>
-              ))}
-            </ul>
-            {room.roundsPlayed < room.bestOf && <p className="muted small">next round starting…</p>}
-          </div>
-        )}
+        {lastRoundEnded && room.status === "RoundResults" && (() => {
+          const winner = lastRoundEnded.winnerTeamId
+            ? room.teams.find((t) => t.id === lastRoundEnded.winnerTeamId)
+            : null;
+          const youWon = winner && winner.id === myTeamId;
+          return (
+            <div className="finished-block round-result">
+              <p className="screen-title">
+                {winner
+                  ? <>// <strong style={{ color: winner.color }}>{winner.name}</strong> wins this round{youWon ? " 🏆" : ""}</>
+                  : <>// nobody solved it — draw</>}
+              </p>
+              <p className="word-reveal">the word was <strong style={{ color: "var(--accent)" }}>{lastRoundEnded.word}</strong></p>
+              <ul className="team-roster">
+                {lastRoundEnded.perTeam.map((t) => (
+                  <li key={t.teamId}>
+                    <span>{t.teamName}</span>
+                    <span className={t.solved ? "target-hit" : "target-miss"}>{t.solved ? "✓ solved" : "× lost"}</span>
+                    {t.solveSeconds && <span className="muted small">{t.solveSeconds.toFixed(1)}s</span>}
+                  </li>
+                ))}
+              </ul>
+              {room.roundsPlayed < room.bestOf && <p className="muted small">next round starting…</p>}
+            </div>
+          );
+        })()}
 
         {lastMatchEnded && (
           <div className="finished-block">

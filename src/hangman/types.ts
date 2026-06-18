@@ -29,6 +29,7 @@ export interface TeamBoardDto {
   wrongCount: number;
   maxWrong: number;
   solved: boolean;
+  redacted: boolean;
 }
 
 export interface ActiveTurnDto {
@@ -69,6 +70,7 @@ export interface HangmanRoomDto {
 
 export interface RoundEndedDto {
   word: string;
+  winnerTeamId: string | null;
   perTeam: Array<{
     teamId: string;
     teamName: string;
@@ -76,6 +78,14 @@ export interface RoundEndedDto {
     wrongCount: number;
     solveSeconds: number | null;
   }>;
+}
+
+export interface OpponentProgressDto {
+  teamId: string;
+  blurredMask: string;
+  wrongCount: number;
+  maxWrong: number;
+  solved: boolean;
 }
 
 export interface MatchEndedDto {

@@ -22,6 +22,7 @@ import type {
   HangmanRoomDto,
   LetterGuessedDto,
   MatchEndedDto,
+  OpponentProgressDto,
   RoundEndedDto,
 } from "./types";
 
@@ -115,6 +116,7 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
     });
 
     connection.on("LetterGuessed", (payload: LetterGuessedDto) => {
+      // We only receive this for OUR team's guesses. Update with the full mask + letter.
       setState((s) => {
         if (!s.room || !s.room.currentRound) return s;
         const boards = s.room.currentRound.boards.map((b) =>
@@ -124,6 +126,30 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
                 mask: payload.mask,
                 wrongCount: payload.wrongCount,
                 guessedLetters: [...new Set([...b.guessedLetters, payload.letter])],
+                redacted: false,
+              }
+            : b,
+        );
+        return {
+          ...s,
+          room: { ...s.room, currentRound: { ...s.room.currentRound, boards } },
+        };
+      });
+    });
+
+    connection.on("OpponentProgress", (payload: OpponentProgressDto) => {
+      // The opposing team made a move — we get the blurred mask + wrong count, no letters.
+      setState((s) => {
+        if (!s.room || !s.room.currentRound) return s;
+        const boards = s.room.currentRound.boards.map((b) =>
+          b.teamId === payload.teamId
+            ? {
+                ...b,
+                mask: payload.blurredMask,
+                wrongCount: payload.wrongCount,
+                solved: payload.solved,
+                guessedLetters: [],
+                redacted: true,
               }
             : b,
         );
