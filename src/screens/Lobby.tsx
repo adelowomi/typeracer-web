@@ -141,7 +141,7 @@ export function Lobby() {
         </div>
 
         <section>
-          <h3>// racers ({room.racers.length}/5)</h3>
+          <h3>// racers ({room.racers.length}/10)</h3>
           <ul className="racer-list">
             {room.racers.map((r) => (
               <li key={r.connectionId}>
