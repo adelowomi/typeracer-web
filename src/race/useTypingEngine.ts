@@ -17,6 +17,7 @@ interface Options {
 interface TypingState {
   charIndex: number;
   wrong: boolean;
+  wrongIndices: ReadonlySet<number>;
   wpm: number;
   accuracy: number;
   totalKeystrokes: number;
@@ -27,6 +28,7 @@ interface TypingState {
 const INITIAL: TypingState = {
   charIndex: 0,
   wrong: false,
+  wrongIndices: new Set<number>(),
   wpm: 0,
   accuracy: 1,
   totalKeystrokes: 0,
@@ -70,7 +72,15 @@ export function useTypingEngine({ text, startedAt, onProgress, onFinish, throttl
         setState((s) => {
           if (s.charIndex === 0 && !s.wrong) return s;
           if (s.wrong) return { ...s, wrong: false };
-          return { ...s, charIndex: s.charIndex - 1 };
+          const nextCharIndex = s.charIndex - 1;
+          // If we're backing over a position previously marked wrong (Speed mode skip),
+          // clear it so a re-type gets a fresh verdict.
+          if (s.wrongIndices.has(nextCharIndex)) {
+            const wrongIndices = new Set(s.wrongIndices);
+            wrongIndices.delete(nextCharIndex);
+            return { ...s, charIndex: nextCharIndex, wrongIndices };
+          }
+          return { ...s, charIndex: nextCharIndex };
         });
         return;
       }
@@ -112,6 +122,8 @@ export function useTypingEngine({ text, startedAt, onProgress, onFinish, throttl
           const accuracy = s.correctKeystrokes / totalKeystrokes;
           const finished = charIndex >= text.length;
           const wpm = computeWpm(s.correctKeystrokes);
+          const wrongIndices = new Set(s.wrongIndices);
+          wrongIndices.add(s.charIndex);
           return {
             ...s,
             charIndex,
@@ -120,6 +132,7 @@ export function useTypingEngine({ text, startedAt, onProgress, onFinish, throttl
             wpm,
             finished,
             wrong: false,
+            wrongIndices,
           };
         }
         return {
@@ -176,6 +189,7 @@ export function useTypingEngine({ text, startedAt, onProgress, onFinish, throttl
     () => ({
       charIndex: state.charIndex,
       wrong: state.wrong,
+      wrongIndices: state.wrongIndices,
       wpm: state.wpm,
       accuracy: state.accuracy,
       finished: state.finished,

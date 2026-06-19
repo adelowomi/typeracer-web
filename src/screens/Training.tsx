@@ -351,6 +351,7 @@ export function Training() {
               text={fetched.text}
               charIndex={engine.charIndex}
               wrong={engine.wrong}
+              wrongIndices={engine.wrongIndices}
             />
             {liveTarget && (
               <div className="target-bar">

@@ -313,6 +313,13 @@ section h3 { margin: 0 0 10px; color: var(--fg-dim); font-size: 12px; font-weigh
   letter-spacing: 0.01em;
 }
 .race-text .typed { color: var(--accent); }
+.race-text .typed-wrong {
+  color: var(--error);
+  text-decoration: underline;
+  text-decoration-style: wavy;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+}
 .race-text .current {
   background: var(--cursor);
   color: var(--bg);

@@ -68,6 +68,7 @@ export function Race() {
             text={raceText}
             charIndex={engine.charIndex}
             wrong={engine.wrong}
+            wrongIndices={engine.wrongIndices}
           />
         )}
 
