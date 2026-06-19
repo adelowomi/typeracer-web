@@ -112,6 +112,7 @@ export function Training() {
   const engine = useTypingEngine({
     text: fetched?.text ?? "",
     startedAt: phase === "racing" ? startedAt : null,
+    allowSkipWrong: mode === "Speed",
     onProgress: () => {},
     onFinish: async (wpm, accuracy) => {
       setFinalWpm(wpm);

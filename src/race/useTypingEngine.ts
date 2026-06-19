@@ -6,6 +6,12 @@ interface Options {
   onProgress: (charIndex: number, wpm: number, accuracy: number) => void;
   onFinish: (wpm: number, accuracy: number) => void;
   throttleMs?: number;
+  /**
+   * When true, wrong keystrokes advance the cursor anyway (the wrong char is "skipped past"
+   * and counted as a missed keystroke for accuracy). Used in Speed mode so errors don't
+   * block forward progress.
+   */
+  allowSkipWrong?: boolean;
 }
 
 interface TypingState {
@@ -28,7 +34,7 @@ const INITIAL: TypingState = {
   finished: false,
 };
 
-export function useTypingEngine({ text, startedAt, onProgress, onFinish, throttleMs = 150 }: Options) {
+export function useTypingEngine({ text, startedAt, onProgress, onFinish, throttleMs = 150, allowSkipWrong = false }: Options) {
   const [state, setState] = useState<TypingState>(INITIAL);
   const lastReportRef = useRef(0);
   const stateRef = useRef(state);
@@ -96,6 +102,24 @@ export function useTypingEngine({ text, startedAt, onProgress, onFinish, throttl
             accuracy,
             wpm,
             finished,
+          };
+        }
+        // Wrong key — in Speed mode we advance past it so the racer isn't blocked;
+        // it still counts as a miss and tanks accuracy. Otherwise we freeze the cursor
+        // and force a Backspace before forward progress can continue.
+        if (allowSkipWrong) {
+          const charIndex = s.charIndex + 1;
+          const accuracy = s.correctKeystrokes / totalKeystrokes;
+          const finished = charIndex >= text.length;
+          const wpm = computeWpm(s.correctKeystrokes);
+          return {
+            ...s,
+            charIndex,
+            totalKeystrokes,
+            accuracy,
+            wpm,
+            finished,
+            wrong: false,
           };
         }
         return {

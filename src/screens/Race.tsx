@@ -39,6 +39,7 @@ export function Race() {
     startedAt: raceStartedAt,
     onProgress: reportProgress,
     onFinish: finishRace,
+    allowSkipWrong: room?.mode === "Speed",
   });
 
   if (!room) return null;
