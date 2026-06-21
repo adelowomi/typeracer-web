@@ -5,6 +5,7 @@ import { Landing } from "./screens/Landing";
 import { RaceLanding } from "./screens/RaceLanding";
 import { Lobby } from "./screens/Lobby";
 import { Race } from "./screens/Race";
+import { Spectate } from "./screens/Spectate";
 import { Results } from "./screens/Results";
 import { Login } from "./screens/Login";
 import { Register } from "./screens/Register";
@@ -41,6 +42,7 @@ export default function App() {
               <Route path="/leaderboard" element={<GlobalLeaderboard />} />
               <Route path="/room/:code" element={<Lobby />} />
               <Route path="/room/:code/race" element={<Race />} />
+              <Route path="/room/:code/spectate" element={<Spectate />} />
               <Route path="/room/:code/results" element={<Results />} />
               <Route path="/room/:code/leaderboard" element={<RoomLeaderboard />} />
               <Route path="/hangman" element={<HangmanLanding />} />

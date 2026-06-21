@@ -1065,3 +1065,11 @@ a:hover { text-decoration: underline; }
 }
 .game-card:hover .game-cta { opacity: 1; transform: translateX(0); }
 
+/* spectator */
+.badge.spectator {
+  color: var(--cursor);
+  border-color: var(--cursor);
+}
+.spectate-hint { margin: 8px 0 0; font-size: 12px; }
+.spectate-hint .link-button:disabled { opacity: 0.5; cursor: not-allowed; }
+

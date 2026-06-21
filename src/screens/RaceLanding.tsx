@@ -237,6 +237,17 @@ export function RaceLanding() {
             >
               {busy === "join" ? "joining…" : "join_room()"}
             </button>
+            <p className="muted spectate-hint">
+              just want to watch?{" "}
+              <button
+                type="button"
+                className="link-button"
+                disabled={!joinCode.trim()}
+                onClick={() => navigate(`/room/${joinCode.trim().toUpperCase()}/spectate`)}
+              >
+                spectate this room →
+              </button>
+            </p>
           </form>
         </div>
 

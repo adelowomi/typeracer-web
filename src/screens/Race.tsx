@@ -86,6 +86,7 @@ export function Race() {
         {phase === "racing" && (
           <p className="muted hint">
             type to race · paste is blocked · backspace fixes mistakes
+            {room.spectatorCount > 0 && ` · 👁 ${room.spectatorCount} watching`}
           </p>
         )}
       </div>

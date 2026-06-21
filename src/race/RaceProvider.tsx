@@ -37,11 +37,14 @@ interface RaceState {
   results: RaceResultDto[];
   error: string | null;
   connectionId: string | null;
+  isSpectator: boolean;
 }
 
 interface RaceContextValue extends RaceState {
   createRoom: (request: CreateRoomRequest) => Promise<RoomDto>;
   joinRoom: (code: string, nickname: string | null) => Promise<RoomDto>;
+  spectate: (code: string) => Promise<RoomDto>;
+  leaveSpectate: () => Promise<void>;
   leaveRoom: () => Promise<void>;
   setTextSource: (source: TextSourceDto) => Promise<void>;
   setRaceMode: (mode: string) => Promise<void>;
@@ -62,6 +65,7 @@ const INITIAL_STATE: RaceState = {
   results: [],
   error: null,
   connectionId: null,
+  isSpectator: false,
 };
 
 export function RaceProvider({ children }: { children: ReactNode }) {
@@ -221,6 +225,40 @@ export function RaceProvider({ children }: { children: ReactNode }) {
     [ensureConnection],
   );
 
+  const spectate = useCallback(
+    async (code: string): Promise<RoomDto> => {
+      const connection = await ensureConnection();
+      try {
+        const room = await connection.invoke<RoomDto>("JoinAsSpectator", code);
+        setState((s) => ({
+          ...s,
+          room,
+          phase: mapPhase(room.status),
+          isSpectator: true,
+          raceText: room.text,
+          error: null,
+          connectionId: connection.connectionId ?? s.connectionId,
+        }));
+        return room;
+      } catch (err) {
+        const message = errorMessage(err);
+        setState((s) => ({ ...s, error: message }));
+        throw err;
+      }
+    },
+    [ensureConnection],
+  );
+
+  const leaveSpectate = useCallback(async () => {
+    if (!connectionRef.current) return;
+    try {
+      await connectionRef.current.invoke("LeaveSpectator");
+    } catch {
+      // ignore
+    }
+    setState(() => ({ ...INITIAL_STATE, connectionId: connectionRef.current?.connectionId ?? null }));
+  }, []);
+
   const leaveRoom = useCallback(async () => {
     if (!connectionRef.current) return;
     try {
@@ -287,6 +325,8 @@ export function RaceProvider({ children }: { children: ReactNode }) {
       ...state,
       createRoom,
       joinRoom,
+      spectate,
+      leaveSpectate,
       leaveRoom,
       setTextSource,
       setRaceMode,
@@ -295,7 +335,7 @@ export function RaceProvider({ children }: { children: ReactNode }) {
       finishRace,
       clearError,
     }),
-    [state, createRoom, joinRoom, leaveRoom, setTextSource, setRaceMode, startRace, reportProgress, finishRace, clearError],
+    [state, createRoom, joinRoom, spectate, leaveSpectate, leaveRoom, setTextSource, setRaceMode, startRace, reportProgress, finishRace, clearError],
   );
 
   return <RaceContext.Provider value={value}>{children}</RaceContext.Provider>;

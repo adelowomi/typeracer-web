@@ -32,6 +32,7 @@ export interface RoomDto {
   mode: RaceMode;
   text: string;
   racers: RacerDto[];
+  spectatorCount: number;
 }
 
 export interface RaceStartedPayload {

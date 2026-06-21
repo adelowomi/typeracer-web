@@ -33,6 +33,7 @@ export function Lobby() {
   const [language, setLanguage] = useState<CodeLanguage>("python");
   const [customText, setCustomText] = useState("");
   const [copied, setCopied] = useState(false);
+  const [spectateCopied, setSpectateCopied] = useState(false);
 
   useEffect(() => {
     if (!room) {
@@ -59,6 +60,13 @@ export function Lobby() {
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copySpectate = async () => {
+    const url = `${window.location.origin}/room/${room.code}/spectate`;
+    await navigator.clipboard.writeText(url);
+    setSpectateCopied(true);
+    setTimeout(() => setSpectateCopied(false), 2000);
   };
 
   const handleSourcePick = async (kind: TextSourceKind) => {
@@ -135,13 +143,21 @@ export function Lobby() {
           <button onClick={copyInvite} className="ghost">
             {copied ? "copied ✓" : "copy link"}
           </button>
+          <button onClick={copySpectate} className="ghost">
+            {spectateCopied ? "copied ✓" : "spectate link"}
+          </button>
           <button onClick={handleLeave} className="ghost danger">
             leave
           </button>
         </div>
 
         <section>
-          <h3>// racers ({room.racers.length}/10)</h3>
+          <h3>
+            // racers ({room.racers.length}/10)
+            {room.spectatorCount > 0 && (
+              <span className="muted"> · 👁 {room.spectatorCount} watching</span>
+            )}
+          </h3>
           <ul className="racer-list">
             {room.racers.map((r) => (
               <li key={r.connectionId}>
