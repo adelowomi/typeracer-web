@@ -10,6 +10,7 @@ export function HangmanLobby() {
   const [editTeam, setEditTeam] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [copied, setCopied] = useState(false);
+  const [spectateCopied, setSpectateCopied] = useState(false);
 
   useEffect(() => {
     if (!room) navigate("/hangman", { replace: true });
@@ -30,6 +31,12 @@ export function HangmanLobby() {
     await navigator.clipboard.writeText(`${window.location.origin}/hangman?code=${room.code}`);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const copySpectate = async () => {
+    await navigator.clipboard.writeText(`${window.location.origin}/hangman/room/${room.code}/spectate`);
+    setSpectateCopied(true);
+    setTimeout(() => setSpectateCopied(false), 2000);
   };
 
   const handleStart = async () => {
@@ -56,6 +63,7 @@ export function HangmanLobby() {
             <div className="invite-code">{room.code}</div>
           </div>
           <button onClick={copyInvite} className="ghost">{copied ? "copied ✓" : "copy link"}</button>
+          <button onClick={copySpectate} className="ghost">{spectateCopied ? "copied ✓" : "spectate link"}</button>
           <button onClick={handleLeave} className="ghost danger">leave</button>
         </div>
 
@@ -68,7 +76,12 @@ export function HangmanLobby() {
         </section>
 
         <section>
-          <h3>// teams ({room.teams.length})</h3>
+          <h3>
+            // teams ({room.teams.length})
+            {room.spectatorCount > 0 && (
+              <span className="muted"> · 👁 {room.spectatorCount} watching</span>
+            )}
+          </h3>
           <div className="team-grid">
             {room.teams.map((team) => {
               const roster = room.players.filter((p) => p.teamId === team.id);

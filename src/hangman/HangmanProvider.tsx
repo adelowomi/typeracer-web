@@ -44,11 +44,14 @@ interface HangmanState {
   nextRoundCountdown: number | null;
   chatMessages: ChatMessage[];
   error: string | null;
+  isSpectator: boolean;
 }
 
 interface HangmanContextValue extends HangmanState {
   createRoom: (request: CreateHangmanRoomRequest) => Promise<HangmanRoomDto>;
   joinRoom: (code: string, nickname: string | null) => Promise<HangmanRoomDto>;
+  spectate: (code: string) => Promise<HangmanRoomDto>;
+  leaveSpectate: () => Promise<void>;
   assignToTeam: (teamId: string) => Promise<void>;
   renameTeam: (teamId: string, name: string) => Promise<void>;
   setWordSource: (source: string, category: string, difficulty: string) => Promise<void>;
@@ -71,6 +74,7 @@ const INITIAL: HangmanState = {
   nextRoundCountdown: null,
   chatMessages: [],
   error: null,
+  isSpectator: false,
 };
 
 const HangmanContext = createContext<HangmanContextValue | null>(null);
@@ -82,6 +86,7 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
   const tokenRef = useRef<string | null>(null);
   const lastRoomCodeRef = useRef<string | null>(null);
   const lastNicknameRef = useRef<string | null>(null);
+  const isSpectatorRef = useRef<boolean>(false);
 
   useEffect(() => { tokenRef.current = token; }, [token]);
 
@@ -103,6 +108,10 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
     connection.onreconnected(() => {
       const code = lastRoomCodeRef.current;
       if (!code) return;
+      if (isSpectatorRef.current) {
+        connection.invoke("JoinAsSpectator", code).catch(() => { /* best effort */ });
+        return;
+      }
       // Re-call JoinRoom; server detects same UserId and restores the existing slot.
       connection.invoke("JoinRoom", { code, nickname: lastNicknameRef.current })
         .catch(() => { /* ignore — best effort */ });
@@ -255,6 +264,30 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
     }
   }, [ensureConnection]);
 
+  const spectate = useCallback(async (code: string) => {
+    const conn = await ensureConnection();
+    try {
+      const room = await conn.invoke<HangmanRoomDto>("JoinAsSpectator", code);
+      lastRoomCodeRef.current = room.code;
+      lastNicknameRef.current = null;
+      isSpectatorRef.current = true;
+      setState((s) => ({ ...s, room, isSpectator: true, error: null, connectionId: conn.connectionId ?? s.connectionId, lastRoundEnded: null, lastMatchEnded: null }));
+      return room;
+    } catch (err) {
+      const message = errorMessage(err);
+      setState((s) => ({ ...s, error: message }));
+      throw err;
+    }
+  }, [ensureConnection]);
+
+  const leaveSpectate = useCallback(async () => {
+    if (!connectionRef.current) return;
+    try { await connectionRef.current.invoke("LeaveSpectator"); } catch {}
+    lastRoomCodeRef.current = null;
+    isSpectatorRef.current = false;
+    setState(() => ({ ...INITIAL, connectionId: connectionRef.current?.connectionId ?? null }));
+  }, []);
+
   const assignToTeam = useCallback(async (teamId: string) => {
     if (!connectionRef.current) return;
     try { await connectionRef.current.invoke("AssignToTeam", teamId); }
@@ -298,6 +331,7 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
     try { await connectionRef.current.invoke("LeaveRoom"); } catch {}
     lastRoomCodeRef.current = null;
     lastNicknameRef.current = null;
+    isSpectatorRef.current = false;
     setState(() => ({ ...INITIAL, connectionId: connectionRef.current?.connectionId ?? null }));
   }, []);
 
@@ -310,8 +344,8 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<HangmanContextValue>(() => ({
     ...state,
-    createRoom, joinRoom, assignToTeam, renameTeam, setWordSource, startMatch, guessLetter, sendChat, leaveRoom, clearError, clearMatchEnded,
-  }), [state, createRoom, joinRoom, assignToTeam, renameTeam, setWordSource, startMatch, guessLetter, sendChat, leaveRoom, clearError, clearMatchEnded]);
+    createRoom, joinRoom, spectate, leaveSpectate, assignToTeam, renameTeam, setWordSource, startMatch, guessLetter, sendChat, leaveRoom, clearError, clearMatchEnded,
+  }), [state, createRoom, joinRoom, spectate, leaveSpectate, assignToTeam, renameTeam, setWordSource, startMatch, guessLetter, sendChat, leaveRoom, clearError, clearMatchEnded]);
 
   return <HangmanContext.Provider value={value}>{children}</HangmanContext.Provider>;
 }

@@ -18,6 +18,7 @@ import { HangmanProvider } from "./hangman/HangmanProvider";
 import { HangmanLanding } from "./hangman/HangmanLanding";
 import { HangmanLobby } from "./hangman/HangmanLobby";
 import { HangmanPlay } from "./hangman/HangmanPlay";
+import { HangmanSpectate } from "./hangman/HangmanSpectate";
 import { XoProvider } from "./xo/XoProvider";
 import { XoLanding } from "./xo/XoLanding";
 import { XoLobby } from "./xo/XoLobby";
@@ -48,6 +49,7 @@ export default function App() {
               <Route path="/hangman" element={<HangmanLanding />} />
               <Route path="/hangman/room/:code" element={<HangmanLobby />} />
               <Route path="/hangman/room/:code/play" element={<HangmanPlay />} />
+              <Route path="/hangman/room/:code/spectate" element={<HangmanSpectate />} />
               <Route path="/xo" element={<XoLanding />} />
               <Route path="/xo/room/:code" element={<XoLobby />} />
               <Route path="/xo/room/:code/play" element={<XoPlay />} />

@@ -66,6 +66,7 @@ export interface HangmanRoomDto {
   teams: TeamDto[];
   players: HangmanPlayerDto[];
   currentRound: HangmanRoundDto | null;
+  spectatorCount: number;
 }
 
 export interface RoundEndedDto {
