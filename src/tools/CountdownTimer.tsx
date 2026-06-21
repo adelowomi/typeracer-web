@@ -24,28 +24,49 @@ function format(ms: number): string {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
 }
 
-function beep() {
+// Loud two-tone alarm ring (~2.8s). Returns the AudioContext so the caller can
+// silence it early (e.g. on reset).
+function playAlarm(): AudioContext | null {
   try {
     const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-    if (!Ctx) return;
+    if (!Ctx) return null;
     const ctx = new Ctx();
+
+    const master = ctx.createGain();
+    master.connect(ctx.destination);
+
     const now = ctx.currentTime;
-    // three short rising blips
-    [0, 0.25, 0.5].forEach((offset, i) => {
+    const beepDur = 0.13;
+    const step = beepDur + 0.07;
+    const beeps = 14; // ~2.8s of ringing
+    const total = beeps * step;
+
+    // Master envelope — ramp in to avoid a click, hold loud, fade out at the end.
+    master.gain.setValueAtTime(0.0001, now);
+    master.gain.exponentialRampToValueAtTime(0.85, now + 0.02);
+    master.gain.setValueAtTime(0.85, now + total - 0.06);
+    master.gain.exponentialRampToValueAtTime(0.0001, now + total);
+
+    for (let i = 0; i < beeps; i++) {
+      const t = now + i * step;
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.value = 660 + i * 220;
-      gain.gain.setValueAtTime(0.0001, now + offset);
-      gain.gain.exponentialRampToValueAtTime(0.3, now + offset + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + offset + 0.2);
-      osc.connect(gain).connect(ctx.destination);
-      osc.start(now + offset);
-      osc.stop(now + offset + 0.22);
-    });
-    window.setTimeout(() => ctx.close().catch(() => {}), 1200);
+      // triangle is louder/brighter than sine; alternate two tones for a classic alarm warble
+      osc.type = "triangle";
+      osc.frequency.value = i % 2 === 0 ? 880 : 1245;
+      gain.gain.setValueAtTime(0.0001, t);
+      gain.gain.exponentialRampToValueAtTime(0.9, t + 0.008);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + beepDur);
+      osc.connect(gain).connect(master);
+      osc.start(t);
+      osc.stop(t + beepDur + 0.02);
+    }
+
+    window.setTimeout(() => ctx.close().catch(() => {}), Math.ceil(total * 1000) + 200);
+    return ctx;
   } catch {
     /* audio not available — visual cue still fires */
+    return null;
   }
 }
 
@@ -59,6 +80,7 @@ export function CountdownTimer() {
 
   const deadlineRef = useRef<number | null>(null);
   const tickRef = useRef<number | null>(null);
+  const alarmRef = useRef<AudioContext | null>(null);
 
   const configuredMs = (hours * 3600 + minutes * 60 + seconds) * 1000;
 
@@ -69,7 +91,14 @@ export function CountdownTimer() {
     }
   };
 
-  useEffect(() => () => stopTick(), []);
+  const stopAlarm = () => {
+    if (alarmRef.current) {
+      alarmRef.current.close().catch(() => {});
+      alarmRef.current = null;
+    }
+  };
+
+  useEffect(() => () => { stopTick(); stopAlarm(); }, []);
 
   // While idle the display mirrors the configured inputs; once started it tracks `remaining`.
   const displayMs = phase === "idle" ? configuredMs : remaining;
@@ -84,7 +113,7 @@ export function CountdownTimer() {
         deadlineRef.current = null;
         setRemaining(0);
         setPhase("done");
-        beep();
+        alarmRef.current = playAlarm();
       } else {
         setRemaining(left);
       }
@@ -111,6 +140,7 @@ export function CountdownTimer() {
 
   const reset = () => {
     stopTick();
+    stopAlarm();
     deadlineRef.current = null;
     setPhase("idle");
     setRemaining(configuredMs);
