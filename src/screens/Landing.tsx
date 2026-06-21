@@ -30,6 +30,15 @@ const TOOLS: GameCard[] = [
     accent: "#67e8f9",
     art: "⏲",
   },
+  {
+    to: "/tools/groups",
+    key: "groups",
+    name: "group shuffler",
+    tagline: "drop in names or a headcount and split everyone into random teams.",
+    players: "utility",
+    accent: "#f0abfc",
+    art: "⧉",
+  },
 ];
 
 const GAMES: GameCard[] = [

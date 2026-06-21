@@ -26,6 +26,7 @@ import { XoPlay } from "./xo/XoPlay";
 import { XoSpectate } from "./xo/XoSpectate";
 import { DiceRoller } from "./tools/DiceRoller";
 import { CountdownTimer } from "./tools/CountdownTimer";
+import { GroupShuffler } from "./tools/GroupShuffler";
 
 export default function App() {
   return (
@@ -59,6 +60,7 @@ export default function App() {
               <Route path="/xo/room/:code/spectate" element={<XoSpectate />} />
               <Route path="/tools/dice" element={<DiceRoller />} />
               <Route path="/tools/timer" element={<CountdownTimer />} />
+              <Route path="/tools/groups" element={<GroupShuffler />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <footer className="app-footer">
