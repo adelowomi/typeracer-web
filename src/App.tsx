@@ -24,6 +24,8 @@ import { XoLanding } from "./xo/XoLanding";
 import { XoLobby } from "./xo/XoLobby";
 import { XoPlay } from "./xo/XoPlay";
 import { XoSpectate } from "./xo/XoSpectate";
+import { DiceRoller } from "./tools/DiceRoller";
+import { CountdownTimer } from "./tools/CountdownTimer";
 
 export default function App() {
   return (
@@ -55,6 +57,8 @@ export default function App() {
               <Route path="/xo/room/:code" element={<XoLobby />} />
               <Route path="/xo/room/:code/play" element={<XoPlay />} />
               <Route path="/xo/room/:code/spectate" element={<XoSpectate />} />
+              <Route path="/tools/dice" element={<DiceRoller />} />
+              <Route path="/tools/timer" element={<CountdownTimer />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <footer className="app-footer">

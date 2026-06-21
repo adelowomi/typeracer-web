@@ -11,6 +11,27 @@ interface GameCard {
   accent: string;
 }
 
+const TOOLS: GameCard[] = [
+  {
+    to: "/tools/dice",
+    key: "dice",
+    name: "dice roller",
+    tagline: "roll the dice — or settle who goes first with a high-roll shootout.",
+    players: "utility",
+    accent: "#c4b5fd",
+    art: "⚄",
+  },
+  {
+    to: "/tools/timer",
+    key: "timer",
+    name: "countdown timer",
+    tagline: "set a timer for turns, breaks, or speed rounds. beeps when it hits zero.",
+    players: "utility",
+    accent: "#67e8f9",
+    art: "⏲",
+  },
+];
+
 const GAMES: GameCard[] = [
   {
     to: "/race",
@@ -97,6 +118,26 @@ export function Landing() {
               <strong className="game-name">{game.name}</strong>
               <span className="muted game-tagline">{game.tagline}</span>
               <span className="game-cta">play →</span>
+            </Link>
+          ))}
+        </div>
+
+        <h3 className="section-head">// tools</h3>
+        <div className="games-grid">
+          {TOOLS.map((tool) => (
+            <Link
+              key={tool.key}
+              to={tool.to}
+              className="game-card"
+              style={{ ["--game-accent" as string]: tool.accent }}
+            >
+              <div className="game-card-head">
+                <span className="game-art" aria-hidden>{tool.art}</span>
+                <span className="game-players">{tool.players}</span>
+              </div>
+              <strong className="game-name">{tool.name}</strong>
+              <span className="muted game-tagline">{tool.tagline}</span>
+              <span className="game-cta">open →</span>
             </Link>
           ))}
         </div>
