@@ -15,7 +15,6 @@ export function XoSpectate() {
   useEffect(() => {
     if (!code) return;
     let active = true;
-    setJoining(true);
     joinRoom(code.toUpperCase(), null, true)
       .catch(() => {})
       .finally(() => {

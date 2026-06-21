@@ -282,7 +282,7 @@ export function HangmanProvider({ children }: { children: ReactNode }) {
 
   const leaveSpectate = useCallback(async () => {
     if (!connectionRef.current) return;
-    try { await connectionRef.current.invoke("LeaveSpectator"); } catch {}
+    try { await connectionRef.current.invoke("LeaveSpectator"); } catch { /* ignore */ }
     lastRoomCodeRef.current = null;
     isSpectatorRef.current = false;
     setState(() => ({ ...INITIAL, connectionId: connectionRef.current?.connectionId ?? null }));

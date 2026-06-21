@@ -21,7 +21,6 @@ export function HangmanSpectate() {
   useEffect(() => {
     if (!code) return;
     let active = true;
-    setJoining(true);
     spectate(code)
       .catch(() => {})
       .finally(() => {
