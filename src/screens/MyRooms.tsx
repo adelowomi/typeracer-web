@@ -74,7 +74,7 @@ export function MyRooms() {
         {error && <p className="error">{error}</p>}
         {!rooms && !error && <p className="muted">loading…</p>}
         {rooms && rooms.length === 0 && (
-          <p className="muted">no rooms yet — <Link to="/">create your first room</Link></p>
+          <p className="muted">no rooms yet — <Link to="/race">create your first room</Link></p>
         )}
         {rooms && rooms.length > 0 && (
           <ul className="room-list">

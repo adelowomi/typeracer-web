@@ -2,6 +2,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { AuthProvider } from "./auth/AuthProvider";
 import { RaceProvider } from "./race/RaceProvider";
 import { Landing } from "./screens/Landing";
+import { RaceLanding } from "./screens/RaceLanding";
 import { Lobby } from "./screens/Lobby";
 import { Race } from "./screens/Race";
 import { Results } from "./screens/Results";
@@ -31,6 +32,7 @@ export default function App() {
           <main className="app">
             <Routes>
               <Route path="/" element={<Landing />} />
+              <Route path="/race" element={<RaceLanding />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/me/rooms" element={<MyRooms />} />

@@ -9,7 +9,7 @@ export function Results() {
 
   useEffect(() => {
     if (!room) {
-      navigate("/", { replace: true });
+      navigate("/race", { replace: true });
     }
   }, [room, navigate]);
 
@@ -29,7 +29,7 @@ export function Results() {
 
   const handleLeave = async () => {
     await leaveRoom();
-    navigate("/", { replace: true });
+    navigate("/race", { replace: true });
   };
 
   const medal = (pos: number) =>

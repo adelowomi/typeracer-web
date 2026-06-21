@@ -36,7 +36,7 @@ export function Lobby() {
 
   useEffect(() => {
     if (!room) {
-      navigate("/", { replace: true });
+      navigate("/race", { replace: true });
     }
   }, [room, navigate]);
 
@@ -55,7 +55,7 @@ export function Lobby() {
   const currentMode = room.mode;
 
   const copyInvite = async () => {
-    const url = `${window.location.origin}/?code=${room.code}`;
+    const url = `${window.location.origin}/race?code=${room.code}`;
     await navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
@@ -115,7 +115,7 @@ export function Lobby() {
 
   const handleLeave = async () => {
     await leaveRoom();
-    navigate("/", { replace: true });
+    navigate("/race", { replace: true });
   };
 
   return (

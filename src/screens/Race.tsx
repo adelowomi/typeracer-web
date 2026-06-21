@@ -21,7 +21,7 @@ export function Race() {
 
   useEffect(() => {
     if (!room) {
-      navigate("/", { replace: true });
+      navigate("/race", { replace: true });
     }
   }, [room, navigate]);
 
