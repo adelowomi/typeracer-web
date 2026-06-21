@@ -7,6 +7,7 @@ export function XoLobby() {
   const navigate = useNavigate();
   const { room, connectionId, error, chooseSide, startGame, leaveRoom } = useXo();
   const [copied, setCopied] = useState(false);
+  const [spectateCopied, setSpectateCopied] = useState(false);
 
   useEffect(() => { if (!room) navigate("/xo", { replace: true }); }, [room, navigate]);
   useEffect(() => {
@@ -22,6 +23,10 @@ export function XoLobby() {
   const copy = async () => {
     await navigator.clipboard.writeText(`${window.location.origin}/xo?code=${room.code}`);
     setCopied(true); setTimeout(() => setCopied(false), 2000);
+  };
+  const copySpectate = async () => {
+    await navigator.clipboard.writeText(`${window.location.origin}/xo/room/${room.code}/spectate`);
+    setSpectateCopied(true); setTimeout(() => setSpectateCopied(false), 2000);
   };
   const handleLeave = async () => { await leaveRoom(); navigate("/xo", { replace: true }); };
 
@@ -57,6 +62,7 @@ export function XoLobby() {
             <div className="invite-code">{room.code}</div>
           </div>
           <button onClick={copy} className="ghost">{copied ? "copied ✓" : "copy link"}</button>
+          <button onClick={copySpectate} className="ghost">{spectateCopied ? "copied ✓" : "spectate link"}</button>
           <button onClick={handleLeave} className="ghost danger">leave</button>
         </div>
 

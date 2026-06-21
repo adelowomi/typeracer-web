@@ -110,6 +110,17 @@ export function XoLanding() {
             <button type="submit" disabled={!joinCode.trim() || busy !== null}>
               {busy === "join" ? "joining…" : "join_room()"}
             </button>
+            <p className="muted spectate-hint">
+              just want to watch?{" "}
+              <button
+                type="button"
+                className="link-button"
+                disabled={!joinCode.trim()}
+                onClick={() => navigate(`/xo/room/${joinCode.trim().toUpperCase()}/spectate`)}
+              >
+                spectate this room →
+              </button>
+            </p>
           </form>
         </div>
 

@@ -23,6 +23,7 @@ import { XoProvider } from "./xo/XoProvider";
 import { XoLanding } from "./xo/XoLanding";
 import { XoLobby } from "./xo/XoLobby";
 import { XoPlay } from "./xo/XoPlay";
+import { XoSpectate } from "./xo/XoSpectate";
 
 export default function App() {
   return (
@@ -53,6 +54,7 @@ export default function App() {
               <Route path="/xo" element={<XoLanding />} />
               <Route path="/xo/room/:code" element={<XoLobby />} />
               <Route path="/xo/room/:code/play" element={<XoPlay />} />
+              <Route path="/xo/room/:code/spectate" element={<XoSpectate />} />
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
             <footer className="app-footer">
